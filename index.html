@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Seamless</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; }
+    .preview-container { display: flex; gap: 20px; align-items: flex-start; }
+    #preview { width: 640px; height: 480px; background: #000; }
+    #debug-image { width: 320px; height: auto; border: 2px solid #333; border-radius: 8px; }
+    .debug-panel { display: flex; flex-direction: column; gap: 10px; }
+    .debug-panel h3 { margin: 0; color: #666; }
+    select, button { margin: 10px 5px 10px 0; padding: 8px; }
+    #results { margin-top: 20px; white-space: pre-wrap; }
+  </style>
+</head>
+<body>
+  <h1>Seamless</h1>
+  <div class="preview-container">
+    <video id="preview" autoplay muted playsinline></video>
+    <div class="debug-panel">
+      <h3>Debug: Test Image</h3>
+      <img id="debug-image" src="Test.png" alt="Test image for clothing detection" />
+    </div>
+  </div>
+  <br>
+  <select id="camera-select"></select>
+  <button id="start-btn">Start</button>
+  <button id="find-btn">Find Clothes</button>
+  <div id="results"></div>
+  <script type="module" src="main.js"></script>
+</body>
+</html>
