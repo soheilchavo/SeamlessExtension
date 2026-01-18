@@ -2,27 +2,27 @@ var m = class extends Error {
   constructor(e, t, r, n) {
     super(e), this.name = "ApiError", this.statusCode = t, this.requestId = r, this.details = n;
   }
-}, b = class extends m {
+}, y = class extends m {
   constructor(e, t) {
     super(e, 401, t), this.name = "UnauthorizedError";
   }
-}, C = class extends m {
+}, b = class extends m {
   constructor(e, t, r) {
     super(e, 422, t, r), this.name = "ValidationError";
   }
-}, I = class extends m {
+}, C = class extends m {
   constructor(e, t) {
     super(e, 404, t), this.name = "NotFoundError";
   }
-}, E = class extends m {
+}, S = class extends m {
   constructor(e, t) {
     super(e), this.name = "NetworkError", this.cause = t;
   }
-}, k = class extends m {
+}, I = class extends m {
   constructor(e, t, r) {
     super(e, 500, t, r), this.name = "ServerError";
   }
-}, L = class {
+}, k = class {
   constructor(e) {
     if (!e.apiKey || typeof e.apiKey != "string")
       throw new Error("apiKey is required and must be a string");
@@ -46,14 +46,14 @@ var m = class extends Error {
           error: "unknown_error",
           message: o.statusText
         })), i = s.message || s.error;
-        throw o.status === 401 ? new b(
+        throw o.status === 401 ? new y(
           i || "Invalid or revoked API key",
           s.request_id
-        ) : o.status === 422 || o.status === 400 ? new C(
+        ) : o.status === 422 || o.status === 400 ? new b(
           i,
           s.request_id,
           s.details
-        ) : o.status === 404 ? new I(i, s.request_id) : o.status >= 500 ? new k(
+        ) : o.status === 404 ? new C(i, s.request_id) : o.status >= 500 ? new I(
           i,
           s.request_id,
           s.details
@@ -66,7 +66,7 @@ var m = class extends Error {
       }
       return await o.json();
     } catch (o) {
-      throw o instanceof m ? o : o instanceof Error ? new E(`Network error: ${o.message}`, o) : new E("Unknown network error");
+      throw o instanceof m ? o : o instanceof Error ? new S(`Network error: ${o.message}`, o) : new S("Unknown network error");
     }
   }
   async createStream(e) {
@@ -135,7 +135,7 @@ var m = class extends Error {
   CLIP_LENGTH_SECONDS: { min: 0.1, max: 60 },
   DELAY_SECONDS: { min: 0, max: 60 },
   RATING: { min: 1, max: 5 }
-}, T = class {
+}, L = class {
   constructor(e = !1) {
     this.debugEnabled = e;
   }
@@ -155,9 +155,9 @@ var m = class extends Error {
   constructor(e) {
     super(e), this.name = "ValidationError";
   }
-}, N = class {
+}, _ = class {
   constructor(e) {
-    this.mediaStream = null, this.peerConnection = null, this.webSocket = null, this.streamId = null, this.keepaliveInterval = null, this.videoElement = null, this.isRunning = !1, this.validateConfig(e), this.config = e, this.logger = new T(e.debug ?? !1), this.client = new L({
+    this.mediaStream = null, this.peerConnection = null, this.webSocket = null, this.streamId = null, this.keepaliveInterval = null, this.videoElement = null, this.isRunning = !1, this.validateConfig(e), this.config = e, this.logger = new L(e.debug ?? !1), this.client = new k({
       baseUrl: e.apiUrl,
       apiKey: e.apiKey
     });
@@ -230,8 +230,8 @@ var m = class extends Error {
           }, 1e4);
           t.onloadedmetadata = () => {
             clearTimeout(i), this.logger.debug("Video metadata loaded"), o();
-          }, t.onerror = (h) => {
-            clearTimeout(i), this.logger.error("Video loading error:", h), s(new Error("Failed to load video file"));
+          }, t.onerror = (g) => {
+            clearTimeout(i), this.logger.error("Video loading error:", g), s(new Error("Failed to load video file"));
           }, t.readyState >= 1 && (clearTimeout(i), o());
         }), await t.play(), this.logger.debug("Video playback started");
         const r = t.captureStream();
@@ -463,32 +463,28 @@ var m = class extends Error {
     this.logger.debug("Cleaning up resources"), this.keepaliveInterval && (window.clearInterval(this.keepaliveInterval), this.keepaliveInterval = null), this.webSocket && (this.webSocket.close(), this.webSocket = null), this.peerConnection && (this.peerConnection.close(), this.peerConnection = null), this.mediaStream && (this.mediaStream.getTracks().forEach((e) => e.stop()), this.mediaStream = null), this.videoElement && (this.videoElement.pause(), URL.revokeObjectURL(this.videoElement.src), this.videoElement.remove(), this.videoElement = null), this.streamId = null, this.logger.debug("Cleanup complete");
   }
 };
-const _ = "ovs_148da6c73eff6fdde6431e7bc82e0dd8", v = "https://web-production-a1e61a.up.railway.app/get-product";
+const N = "ovs_148da6c73eff6fdde6431e7bc82e0dd8", E = "https://web-production-a1e61a.up.railway.app/get-product";
 console.log("Seamless extension loaded");
-let u = null, p = null;
-const w = /* @__PURE__ */ new Map(), d = /* @__PURE__ */ new Map(), f = /* @__PURE__ */ new Set();
-function A(e) {
-  const t = (e.type || "").toLowerCase().trim();
-  return `${(e.color || "").toLowerCase().trim()}-${t}`;
-}
-function P(e, t) {
-  const r = (S) => S.toLowerCase().replace(/[^a-z0-9]/g, ""), n = r(e), o = r(t);
+let u = null;
+const p = /* @__PURE__ */ new Map(), d = /* @__PURE__ */ new Map(), h = /* @__PURE__ */ new Set();
+function T(e, t) {
+  const r = (f) => f.toLowerCase().replace(/[^a-z0-9]/g, ""), n = r(e), o = r(t);
   if (n.includes(o) || o.includes(n)) return !0;
-  const s = new Set(e.toLowerCase().split(/\s+/)), i = new Set(t.toLowerCase().split(/\s+/)), h = [...s].filter((S) => i.has(S)), g = /* @__PURE__ */ new Set([...s, ...i]);
-  return h.length / g.size > 0.6;
+  const s = new Set(e.toLowerCase().split(/\s+/)), i = new Set(t.toLowerCase().split(/\s+/)), g = [...s].filter((f) => i.has(f)), v = /* @__PURE__ */ new Set([...s, ...i]);
+  return g.length / v.size > 0.6;
 }
-function R(e) {
-  for (const [t, r] of w.entries())
-    if (P(e, t))
+function P(e) {
+  for (const [t, r] of p.entries())
+    if (T(e, t))
       return console.log(`Found similar cached item: "${t}" for "${e}"`), r;
   return null;
 }
-async function F(e) {
-  console.log("=== SEARCH PRODUCT START ==="), console.log("Item name:", e), console.log("Railway URL:", v);
+async function R(e) {
+  console.log("=== SEARCH PRODUCT START ==="), console.log("Item name:", e), console.log("Railway URL:", E);
   try {
     const t = JSON.stringify({ item_name: e });
     console.log("Request body:", t), console.log("Sending fetch request...");
-    const r = await fetch(v, {
+    const r = await fetch(E, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: t
@@ -507,7 +503,7 @@ async function F(e) {
     return console.error("=== SEARCH PRODUCT ERROR ==="), console.error("Error type:", t.name), console.error("Error message:", t.message), console.error("Full error:", t), { error: t.message };
   }
 }
-function y(e) {
+function w(e) {
   console.log("=== DISPLAY PRODUCTS ==="), console.log("Products to display:", e), console.log("Products count:", e?.length);
   const t = document.getElementById("products");
   if (console.log("Products container found:", !!t), console.log("Products container element:", t), !t) {
@@ -532,6 +528,7 @@ function y(e) {
                     <span>${r.itemName}: ${r.error}</span>
                 </div>
             ` : r.url ? o.innerHTML = `
+                ${r.image_url ? `<img class="product-image" src="${r.image_url}" alt="${r.itemName}" />` : ""}
                 <div class="product-info">
                     <div class="product-name">${r.itemName || "Product"}</div>
                     ${r.name ? `<div class="product-title">${r.name}</div>` : ""}
@@ -552,59 +549,52 @@ function y(e) {
     };
   });
 }
-async function O(e) {
-  console.log("=== PROCESS CLOTHING ITEMS START ==="), console.log("Clothing data received:", e), console.log("Current cached items:", w.size), console.log("Current found products:", d.size);
+async function A(e) {
+  console.log("=== PROCESS NLP ITEMS START ==="), console.log("Item descriptions:", e), console.log("Current cached items:", p.size), console.log("Current found products:", d.size);
   const t = document.getElementById("products");
-  let r = [];
-  if (e.items && Array.isArray(e.items) ? r = e.items : Array.isArray(e) && (r = e), console.log("Items to process:", r.length), r.length === 0) {
-    d.size > 0 ? y([...d.values()]) : t.innerHTML = '<div class="no-products">No clothing items detected</div>';
-    return;
-  }
-  let n = !1;
-  for (const o of r) {
-    const s = A(o);
-    if (console.log("Normalized key:", s), d.has(s)) {
-      console.log(`Skipping already found item: ${s}`);
+  for (const r of e) {
+    const n = r.toLowerCase().replace(/[^a-z0-9]/g, "-");
+    if (console.log("Normalized key:", n), d.has(n)) {
+      console.log(`Skipping already found item: ${n}`);
       continue;
     }
-    const i = [o.color, o.pattern, o.style, o.type].filter(Boolean).join(" ") || "Unknown item";
-    if (console.log("Built item name:", i), f.has(s)) {
-      console.log(`Already searching for: ${s}`);
+    if (h.has(n)) {
+      console.log(`Already searching for: ${n}`);
       continue;
     }
-    const h = R(i);
-    if (h) {
-      console.log("Using cached result for:", i), d.set(s, {
-        itemName: i,
-        normalizedKey: s,
-        ...h,
+    const o = P(r);
+    if (o) {
+      console.log("Using cached result for:", r), d.set(n, {
+        itemName: r,
+        normalizedKey: n,
+        ...o,
         fromCache: !0
-      }), n = !0;
+      }), w([...d.values()]);
       continue;
     }
-    if (f.add(s), n = !0, d.size > 0) {
-      const g = [...d.values()];
-      g.push({ itemName: i, loading: !0 }), y(g);
+    if (h.add(n), d.size > 0) {
+      const s = [...d.values()];
+      s.push({ itemName: r, loading: !0 }), w(s);
     } else
       t.innerHTML = '<div class="loading">🔍 Searching for products...</div>';
     try {
-      const g = await F(i);
-      console.log("Search result for", i, ":", g), w.set(i, g), d.set(s, {
-        itemName: i,
-        normalizedKey: s,
-        ...g
+      const s = await R(r);
+      console.log("Search result for", r, ":", s), p.set(r, s), d.set(n, {
+        itemName: r,
+        normalizedKey: n,
+        ...s
       });
-    } catch (g) {
-      console.error("Error searching for", i, ":", g), d.set(s, {
-        itemName: i,
-        normalizedKey: s,
-        error: g.message
+    } catch (s) {
+      console.error("Error searching for", r, ":", s), d.set(n, {
+        itemName: r,
+        normalizedKey: n,
+        error: s.message
       });
     } finally {
-      f.delete(s);
+      h.delete(n);
     }
   }
-  (d.size > 0 || n) && (console.log("Displaying all found products:", d.size), y([...d.values()])), console.log("=== PROCESS CLOTHING ITEMS END ===");
+  d.size > 0 && (console.log("Displaying all found products:", d.size), w([...d.values()])), console.log("=== PROCESS NLP ITEMS END ===");
 }
 document.addEventListener("DOMContentLoaded", async () => {
   async function e() {
@@ -619,36 +609,26 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.getElementById("results").innerText = "Please select a camera first!";
       return;
     }
-    p && await p.stop(), p = new N({
+    u && await u.stop(), u = new _({
       apiUrl: "https://cluster1.overshoot.ai/api/v0.2",
-      apiKey: _,
-      prompt: 'Identify all clothing items visible in the image. For each item, describe: type, color, pattern, and style. If no clothing is found, say "No clothing found".',
+      apiKey: N,
+      prompt: "List all clothing items you see. For each item, describe it in detail for image search, like: striped black and yellow short sleeve t-shirt for men, or navy blue low taper jeans for women. Separate items with commas.",
       source: { type: "camera", cameraFacing: "user" },
-      outputSchema: {
-        type: "object",
-        properties: {
-          items: {
-            type: "array",
-            items: {
-              type: "object",
-              properties: {
-                type: { type: "string" },
-                color: { type: "string" },
-                pattern: { type: "string" },
-                style: { type: "string" },
-                gender: { type: "string" }
-              }
-            }
-          }
-        }
+      processing: {
+        clip_length_seconds: 3,
+        delay_seconds: 2,
+        fps: 10,
+        sampling_ratio: 0.1
       },
       onResult: (o) => {
-        console.log("Got result:", o);
-        try {
-          u = typeof o == "string" ? JSON.parse(o) : o.result ? typeof o.result == "string" ? JSON.parse(o.result) : o.result : o, console.log("Parsed clothing data:", u), document.getElementById("results").innerText = JSON.stringify(u, null, 2), console.log("Checking if should process clothing items..."), console.log("latestClothingData:", u), console.log("Has items?", !!u?.items), console.log("Is array?", Array.isArray(u)), u && (u.items || Array.isArray(u)) ? (console.log(">>> Triggering processClothingItems!"), O(u)) : console.log(">>> NOT triggering processClothingItems - conditions not met");
-        } catch (s) {
-          console.log("Parse error:", s), console.log("Raw result:", o), document.getElementById("results").innerText = typeof o == "string" ? o : JSON.stringify(o, null, 2);
+        console.log("Got NLP result:", o);
+        let s = "";
+        if (typeof o == "string" ? s = o : o.result ? s = typeof o.result == "string" ? o.result : JSON.stringify(o.result) : s = JSON.stringify(o), console.log("Text result:", s), document.getElementById("results").innerText = s, s.toLowerCase().includes("none") || s.toLowerCase().includes("no clothing")) {
+          console.log("No clothing detected");
+          return;
         }
+        const i = s.split(/[,\n]/).map((g) => g.trim()).filter((g) => g.length > 0 && g.toLowerCase() !== "none");
+        console.log("Parsed items:", i), i.length > 0 && A(i);
       },
       onMessage: (o) => {
         console.log("Got message:", o);
@@ -659,12 +639,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       onError: (o) => {
         console.error("Vision error:", o), document.getElementById("results").innerText = "An error occurred: " + (o.message || JSON.stringify(o));
       }
-    }), await p.start(), console.log("Vision started with camera.");
+    }), await u.start(), console.log("Vision started with camera.");
   }
   document.getElementById("find-btn").onclick = () => {
     document.getElementById("results").innerText = "Detecting clothing...", t();
   }, document.getElementById("clear-btn").onclick = () => {
-    console.log("Clearing all cached products..."), w.clear(), d.clear(), f.clear(), document.getElementById("products").innerHTML = "", document.getElementById("results").innerText = "", console.log("Cache cleared!");
+    console.log("Clearing all cached products..."), p.clear(), d.clear(), h.clear(), document.getElementById("products").innerHTML = "", document.getElementById("results").innerText = "", console.log("Cache cleared!");
+  }, document.getElementById("stop-btn").onclick = async () => {
+    u && (console.log("Stopping Overshoot vision..."), await u.stop(), u = null, document.getElementById("results").innerText = "Detection stopped.", console.log("Vision stopped."));
   }, document.getElementById("start-btn").onclick = async () => {
     const n = document.getElementById("camera-select").value, o = document.getElementById("preview");
     console.log("Starting camera with device:", n);

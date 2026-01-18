@@ -150,6 +150,7 @@ function displayProducts(products) {
             `;
         } else if (product.url) {
             productCard.innerHTML = `
+                ${product.image_url ? `<img class="product-image" src="${product.image_url}" alt="${product.itemName}" />` : ''}
                 <div class="product-info">
                     <div class="product-name">${product.itemName || 'Product'}</div>
                     ${product.name ? `<div class="product-title">${product.name}</div>` : ''}
@@ -182,6 +183,92 @@ function displayProducts(products) {
             }
         };
     });
+}
+
+// Function to process NLP text items (simple strings like "black t-shirt")
+async function processNLPItems(itemDescriptions) {
+    console.log('=== PROCESS NLP ITEMS START ===');
+    console.log('Item descriptions:', itemDescriptions);
+    console.log('Current cached items:', productCache.size);
+    console.log('Current found products:', foundProducts.size);
+
+    const productsContainer = document.getElementById('products');
+
+    for (const itemName of itemDescriptions) {
+        // Create a normalized key from the description
+        const normalizedKey = itemName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        console.log('Normalized key:', normalizedKey);
+
+        // Skip if we already have this item
+        if (foundProducts.has(normalizedKey)) {
+            console.log(`Skipping already found item: ${normalizedKey}`);
+            continue;
+        }
+
+        // Check if we're already searching for this
+        if (pendingSearches.has(normalizedKey)) {
+            console.log(`Already searching for: ${normalizedKey}`);
+            continue;
+        }
+
+        // Check cache for similar items
+        const cachedResult = findSimilarCachedItem(itemName);
+        if (cachedResult) {
+            console.log('Using cached result for:', itemName);
+            foundProducts.set(normalizedKey, {
+                itemName,
+                normalizedKey,
+                ...cachedResult,
+                fromCache: true
+            });
+            displayProducts([...foundProducts.values()]);
+            continue;
+        }
+
+        // Mark as pending and search
+        pendingSearches.add(normalizedKey);
+
+        // Show loading state
+        if (foundProducts.size > 0) {
+            const currentProducts = [...foundProducts.values()];
+            currentProducts.push({ itemName, loading: true });
+            displayProducts(currentProducts);
+        } else {
+            productsContainer.innerHTML = '<div class="loading">🔍 Searching for products...</div>';
+        }
+
+        try {
+            const result = await searchProduct(itemName);
+            console.log('Search result for', itemName, ':', result);
+
+            // Cache the result
+            productCache.set(itemName, result);
+
+            // Store in found products
+            foundProducts.set(normalizedKey, {
+                itemName,
+                normalizedKey,
+                ...result
+            });
+        } catch (error) {
+            console.error('Error searching for', itemName, ':', error);
+            foundProducts.set(normalizedKey, {
+                itemName,
+                normalizedKey,
+                error: error.message
+            });
+        } finally {
+            pendingSearches.delete(normalizedKey);
+        }
+    }
+
+    // Display all found products
+    if (foundProducts.size > 0) {
+        console.log('Displaying all found products:', foundProducts.size);
+        displayProducts([...foundProducts.values()]);
+    }
+
+    console.log('=== PROCESS NLP ITEMS END ===');
 }
 
 // Function to process detected clothing items and search for products
@@ -332,52 +419,47 @@ document.addEventListener('DOMContentLoaded', async () => {
         vision = new RealtimeVision({
             apiUrl: 'https://cluster1.overshoot.ai/api/v0.2',
             apiKey: API_KEY,
-            prompt: 'Identify all clothing items visible in the image. For each item, describe: type, color, pattern, and style. If no clothing is found, say "No clothing found".',
+            prompt: 'List all clothing items you see. For each item, describe it with as many parameters as it would take to recreate it with an image search, for example "stripped black and yellow short sleeve t-shirt for men" or "levis low taper navy blue jeans for women". Separate items with commas. At the start of each clothing item, list the rectangular coordinates of the bounds of the clothing item relative to the screen, for example [200, 200, 400, 400] would mean that the item spans from (x:200, y:200) pixel coord to (x:400, y:400) pixel coord.',
             source: { type: 'camera', cameraFacing: 'user' },
-            outputSchema: {
-                type: 'object',
-                properties: {
-                    items: {
-                        type: 'array',
-                        items: {
-                            type: 'object',
-                            properties: {
-                                type: { type: 'string' },
-                                color: { type: 'string' },
-                                pattern: { type: 'string' },
-                                style: { type: 'string' },
-                                gender: { type: 'string' }
-                            }
-                        }
-                    }
-                }
+            processing: {
+                clip_length_seconds: 3,
+                delay_seconds: 2,
+                fps: 10,
+                sampling_ratio: 0.1
             },
             onResult: (result) => {
-                console.log('Got result:', result);
-                try {
-                    const data = typeof result === 'string' ? JSON.parse(result) :
-                        result.result ? (typeof result.result === 'string' ? JSON.parse(result.result) : result.result) :
-                            result;
-                    latestClothingData = data;
-                    console.log('Parsed clothing data:', latestClothingData);
-                    document.getElementById('results').innerText = JSON.stringify(latestClothingData, null, 2);
+                console.log('Got NLP result:', result);
 
-                    // Automatically search for products when clothing is detected
-                    console.log('Checking if should process clothing items...');
-                    console.log('latestClothingData:', latestClothingData);
-                    console.log('Has items?', !!latestClothingData?.items);
-                    console.log('Is array?', Array.isArray(latestClothingData));
+                // Extract the text response
+                let textResult = '';
+                if (typeof result === 'string') {
+                    textResult = result;
+                } else if (result.result) {
+                    textResult = typeof result.result === 'string' ? result.result : JSON.stringify(result.result);
+                } else {
+                    textResult = JSON.stringify(result);
+                }
 
-                    if (latestClothingData && (latestClothingData.items || Array.isArray(latestClothingData))) {
-                        console.log('>>> Triggering processClothingItems!');
-                        processClothingItems(latestClothingData);
-                    } else {
-                        console.log('>>> NOT triggering processClothingItems - conditions not met');
-                    }
-                } catch (e) {
-                    console.log('Parse error:', e);
-                    console.log('Raw result:', result);
-                    document.getElementById('results').innerText = typeof result === 'string' ? result : JSON.stringify(result, null, 2);
+                console.log('Text result:', textResult);
+                document.getElementById('results').innerText = textResult;
+
+                // Skip if no clothing detected
+                if (textResult.toLowerCase().includes('none') ||
+                    textResult.toLowerCase().includes('no clothing')) {
+                    console.log('No clothing detected');
+                    return;
+                }
+
+                // Parse comma-separated items and search for each
+                const items = textResult
+                    .split(/[,\n]/)
+                    .map(s => s.trim())
+                    .filter(s => s.length > 0 && s.toLowerCase() !== 'none');
+
+                console.log('Parsed items:', items);
+
+                if (items.length > 0) {
+                    processNLPItems(items);
                 }
             },
             onMessage: (message) => {
