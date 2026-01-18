@@ -303,6 +303,18 @@
             .seamless-checkout-btn:active {
                 transform: translateY(0);
             }
+            .seamless-checkout-btn:disabled {
+                background: #9aa0a6 !important;
+                color: #ffffff;
+                cursor: not-allowed;
+                opacity: 0.7;
+                transform: translateY(0) !important;
+                box-shadow: none !important;
+            }
+            .seamless-checkout-btn:disabled:hover {
+                transform: translateY(0) !important;
+                box-shadow: none !important;
+            }
             .seamless-crypto-payment {
                 padding: 12px 0;
                 border-top: 1px solid #e8eaed;
@@ -391,25 +403,210 @@
         // Update style when selection changes
         cryptoSelect.addEventListener('change', updateCryptoSelectStyle);
         
-        checkoutBtn.addEventListener('click', (e) => {
+        // Simple confetti effect function
+        function triggerConfetti(element) {
+            const colors = ['#34a853', '#ea4335', '#4285f4', '#fbbc04', '#1a1a1a'];
+            const rect = element.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            
+            for (let i = 0; i < 50; i++) {
+                const confetti = document.createElement('div');
+                confetti.style.position = 'fixed';
+                confetti.style.left = centerX + 'px';
+                confetti.style.top = centerY + 'px';
+                confetti.style.width = '8px';
+                confetti.style.height = '8px';
+                confetti.style.backgroundColor = colors[Math.floor(Math.random() * colors.length)];
+                confetti.style.borderRadius = '50%';
+                confetti.style.pointerEvents = 'none';
+                confetti.style.zIndex = '10000';
+                
+                const angle = (Math.PI * 2 * i) / 50;
+                const velocity = 2 + Math.random() * 3;
+                const vx = Math.cos(angle) * velocity;
+                const vy = Math.sin(angle) * velocity;
+                const gravity = 0.3;
+                let x = centerX;
+                let y = centerY;
+                let vyCurrent = vy;
+                
+                document.body.appendChild(confetti);
+                
+                let frame = 0;
+                const animate = () => {
+                    frame++;
+                    x += vx;
+                    y += vyCurrent;
+                    vyCurrent += gravity;
+                    
+                    confetti.style.left = x + 'px';
+                    confetti.style.top = y + 'px';
+                    confetti.style.opacity = 1 - (frame / 60);
+                    
+                    if (frame < 60 && y < window.innerHeight + 100) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        confetti.remove();
+                    }
+                };
+                
+                requestAnimationFrame(animate);
+            }
+        }
+        
+        // Function to convert price to smallest unit (6 decimals for USDC)
+        function convertPriceToSmallestUnit(priceInDollars) {
+            return Math.floor(priceInDollars * 1000000).toString();
+        }
+        
+        checkoutBtn.addEventListener('click', async (e) => {
             e.preventDefault();
             e.stopPropagation();
+            
+            // Prevent multiple clicks
+            if (checkoutBtn.disabled) return;
             
             // Get selected crypto payment method from dropdown
             const cryptoMethod = cryptoSelect.value;
             
-            // TODO: Implement smart contract acceptance logic here
-            console.log('Accept Smart Contract clicked', {
-                product: productInfo.title,
-                price: productInfo.price,
-                subtotal: formatPrice(subtotal),
-                shipping: shipping > 0 ? formatPrice(shipping) : 'Free',
-                tax: formatPrice(tax),
-                total: formatPrice(total),
-                merchant: productInfo.merchant,
-                cryptoPayment: cryptoMethod
-            });
-            // You can implement the smart contract logic here
+            // Trigger confetti effect
+            triggerConfetti(checkoutBtn);
+            
+            // Update button state - grey out and show "Accepted!"
+            checkoutBtn.disabled = true;
+            checkoutBtn.innerHTML = 'Accepted!';
+            checkoutBtn.classList.add('seamless-btn-accepted');
+            
+            try {
+                // Convert price and commission to smallest unit (6 decimals for USDC)
+                const priceInSmallestUnit = convertPriceToSmallestUnit(total);
+                const commission = Math.floor(total * 0.10 * 1000000).toString(); // 10% commission
+                
+                // Hardcoded wallet addresses
+                const consumerWallet = "0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA";
+                const storeWallet = "0xBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBB";
+                const influencerWallet = "0xCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC";
+                
+                const requestBody = {
+                    price: priceInSmallestUnit,
+                    commission: commission,
+                    consumer_wallet: consumerWallet,
+                    store_wallet: storeWallet,
+                    influencer_wallet: influencerWallet
+                };
+                
+                console.log('Creating escrow deal...', requestBody);
+                
+                // Step 1: Create escrow deal using XMLHttpRequest
+                const createData = await new Promise((resolve, reject) => {
+                    const xhr = new XMLHttpRequest();
+                    xhr.open('POST', 'https://seamlesscontract.onrender.com/api/create-escrow', true);
+                    xhr.setRequestHeader('Content-Type', 'application/json');
+                    
+                    xhr.onload = function() {
+                        if (xhr.status >= 200 && xhr.status < 300) {
+                            try {
+                                const data = JSON.parse(xhr.responseText);
+                                console.log('Escrow created:', data);
+                                resolve(data);
+                            } catch (e) {
+                                reject(new Error('Failed to parse response: ' + e.message));
+                            }
+                        } else {
+                            reject(new Error(`Failed to create escrow: ${xhr.status} - ${xhr.responseText}`));
+                        }
+                    };
+                    
+                    xhr.onerror = function() {
+                        reject(new Error('Network error creating escrow'));
+                    };
+                    
+                    xhr.send(JSON.stringify(requestBody));
+                });
+                
+                // Extract dealId from response
+                let dealId = null;
+                if (createData.contract && createData.contract.dealId) {
+                    dealId = createData.contract.dealId;
+                } else if (createData.dealId) {
+                    dealId = createData.dealId;
+                }
+                
+                if (!dealId) {
+                    throw new Error('No dealId received from create-escrow response');
+                }
+                
+                console.log('Deal ID:', dealId);
+                
+                // Step 2: Wait 10 seconds, then fund consumer (call endpoint regardless of blockchain/simulation mode)
+                setTimeout(() => {
+                    console.log('Funding consumer...');
+                    checkoutBtn.innerHTML = 'halfway'; // Update button immediately
+                    
+                    const xhrConsumer = new XMLHttpRequest();
+                    xhrConsumer.open('POST', 'https://seamlesscontract.onrender.com/api/fund-consumer', true);
+                    xhrConsumer.setRequestHeader('Content-Type', 'application/json');
+                    
+                    xhrConsumer.onload = function() {
+                        try {
+                            const data = JSON.parse(xhrConsumer.responseText);
+                            if (xhrConsumer.status >= 200 && xhrConsumer.status < 300) {
+                                console.log('Consumer funded:', data);
+                            } else {
+                                console.log('Consumer funding response (may be blockchain mode error):', data);
+                            }
+                        } catch (e) {
+                            console.error('Error parsing consumer response:', e);
+                        }
+                        
+                        // Step 3: Wait 7 more seconds, then fund store (call endpoint regardless of mode)
+                        setTimeout(() => {
+                            console.log('Funding store...');
+                            checkoutBtn.innerHTML = 'done'; // Update button immediately
+                            
+                            const xhrStore = new XMLHttpRequest();
+                            xhrStore.open('POST', 'https://seamlesscontract.onrender.com/api/fund-store', true);
+                            xhrStore.setRequestHeader('Content-Type', 'application/json');
+                            
+                            xhrStore.onload = function() {
+                                try {
+                                    const data = JSON.parse(xhrStore.responseText);
+                                    if (xhrStore.status >= 200 && xhrStore.status < 300) {
+                                        console.log('Store funded:', data);
+                                    } else {
+                                        console.log('Store funding response (may be blockchain mode error):', data);
+                                    }
+                                } catch (e) {
+                                    console.error('Error parsing store response:', e);
+                                }
+                            };
+                            
+                            xhrStore.onerror = function() {
+                                console.error('Network error funding store');
+                            };
+                            
+                            xhrStore.send(JSON.stringify({
+                                dealId: dealId,
+                                store_wallet: storeWallet
+                            }));
+                        }, 10000);
+                    };
+                    
+                    xhrConsumer.onerror = function() {
+                        console.error('Network error funding consumer');
+                    };
+                    
+                    xhrConsumer.send(JSON.stringify({
+                        dealId: dealId,
+                        consumer_wallet: consumerWallet
+                    }));
+                }, 10000);
+                
+            } catch (error) {
+                console.error('Error creating escrow:', error);
+                // Keep button as "Accepted!" on error
+            }
         });
 
         return checkoutContainer;
