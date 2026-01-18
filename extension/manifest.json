@@ -6,6 +6,20 @@
     "permissions": [
         "sidePanel"
     ],
+    "host_permissions": [
+        "https://www.google.com/*",
+        "https://shopping.google.com/*"
+    ],
+    "content_scripts": [
+        {
+            "matches": [
+                "https://www.google.com/search*",
+                "https://shopping.google.com/*"
+            ],
+            "js": ["content.js"],
+            "run_at": "document_idle"
+        }
+    ],
     "side_panel": {
         "default_path": "sidepanel.html"
     },
