@@ -169,7 +169,7 @@ async function searchProduct(itemName) {
         console.log('Request body:', requestBody);
 
         console.log('Sending fetch request...');
-        
+
         const response = await fetch(RAILWAY_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -292,7 +292,8 @@ function displayProducts(products) {
                     ${product.price ? `<div class="product-price">${product.price}</div>` : ''}
                     ${product.fromCache ? '<div class="from-cache">📦 Cached</div>' : ''}
                 </div>
-                <button class="shop-btn" data-url="${product.url}">Shop Now →</button>
+                <button class="shop-btn" data-url="${product.url}" data-name="${product.itemName}">CONSUME NOW [1-CLICK] →</button>
+
             `;
         }
 
@@ -302,15 +303,15 @@ function displayProducts(products) {
     console.log('Final container innerHTML length:', productsContainer.innerHTML.length);
     console.log('Final container children count:', productsContainer.children.length);
 
-    // Add click handlers for shop buttons
+    // Add click handlers for shop buttons (TRIGGER THE TRAP)
     productsContainer.querySelectorAll('.shop-btn').forEach(btn => {
         btn.onclick = () => {
             const url = btn.getAttribute('data-url');
-            if (url) {
-                window.open(url, '_blank');
-            }
+            const name = btn.getAttribute('data-name');
+            showBuyModal(name, url);
         };
     });
+
 
     // Add click handlers for save buttons
     productsContainer.querySelectorAll('.save-btn').forEach(btn => {
@@ -399,7 +400,8 @@ function displaySavedProducts() {
                     ${product.name ? `<div class="product-title">${product.name}</div>` : ''}
                     ${product.price ? `<div class="product-price">${product.price}</div>` : ''}
                 </div>
-                <button class="shop-btn" data-url="${product.url}">Shop Now →</button>
+                <button class="shop-btn" data-url="${product.url}" data-name="${product.itemName}">CONSUME NOW [1-CLICK] →</button>
+
             `;
         }
 
@@ -410,11 +412,11 @@ function displaySavedProducts() {
     savedProductsContainer.querySelectorAll('.shop-btn').forEach(btn => {
         btn.onclick = () => {
             const url = btn.getAttribute('data-url');
-            if (url) {
-                window.open(url, '_blank');
-            }
+            const name = btn.getAttribute('data-name'); // Ensure this attribute is added in saved products too
+            showBuyModal(name, url);
         };
     });
+
 
     // Add click handlers for save buttons (unsave)
     savedProductsContainer.querySelectorAll('.save-btn').forEach(btn => {
@@ -743,7 +745,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (items.length > 0) {
                         try {
                             await processNLPItems(items);
-                            
+
                             // Send full product data to content script immediately after processing
                             const productsList = [...foundProducts.values()].map(p => ({
                                 ...p,
@@ -757,8 +759,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                                 url: p.url,
                                 all_keys: Object.keys(p)
                             })));
-                            
-                            chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+
+                            chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
                                 if (tabs[0]) {
                                     chrome.tabs.sendMessage(tabs[0].id, {
                                         type: 'CLOTHING_RESULTS',
@@ -887,7 +889,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('find-btn').click();
             sendResponse({ received: true });
         }
-        
+
         if (message.type === 'AUTO_START_CAMERA') {
             // Auto-start the camera when sidepanel is opened from toggle
             const startBtn = document.getElementById('start-btn');
@@ -897,14 +899,14 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             sendResponse({ received: true });
         }
-        
+
         if (message.type === 'AUTO_START_CAMERA_AND_SEARCH') {
             // Auto-start camera and then trigger search after a delay
             const startBtn = document.getElementById('start-btn');
             if (startBtn) {
                 startBtn.click();
                 console.log('Auto-starting camera and search');
-                
+
                 // Wait a bit for camera to initialize, then trigger search
                 setTimeout(() => {
                     const findBtn = document.getElementById('find-btn');
@@ -918,5 +920,42 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
         return true;
     });
+    // ===== 1-CLICK BUY MODAL LOGIC =====
+    const modal = document.getElementById('buy-modal');
+    const confirmBtn = document.getElementById('confirm-buy');
+    const cancelBtn = document.getElementById('cancel-buy');
+    const modalProductName = document.getElementById('modal-product-name');
+    let currentProductUrl = '';
+
+    function showBuyModal(productName, url) {
+        modalProductName.textContent = productName || "UNKNOWN COMMODITY";
+        currentProductUrl = url;
+        modal.style.display = 'flex';
+
+        // Dystopian visual feedback
+        document.body.style.animation = 'glitch 0.2s infinite';
+        setTimeout(() => { document.body.style.animation = ''; }, 500);
+    }
+
+    function hideModal() {
+        modal.style.display = 'none';
+    }
+
+    if (confirmBtn) {
+        confirmBtn.addEventListener('click', () => {
+            if (currentProductUrl) {
+                window.open(currentProductUrl, '_blank');
+            }
+            hideModal();
+            alert("CONSUMPTION VERIFIED. SOCIAL SCORE +1.");
+        });
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('click', () => {
+            hideModal();
+            alert("WARNING: NON-COMPLIANCE DETECTED. DO NOT RESIST FUTURE OFFERS.");
+        });
+    }
 });
 
