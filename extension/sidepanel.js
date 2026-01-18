@@ -733,6 +733,27 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (items.length > 0) {
                         try {
                             await processNLPItems(items);
+                            
+                            // Send full product data to content script immediately after processing
+                            const productsList = [...foundProducts.values()];
+                            console.log('Sending products to content script:', productsList);
+                            console.log('Product details:', productsList.map(p => ({
+                                itemName: p.itemName,
+                                image_url: p.image_url,
+                                url: p.url,
+                                all_keys: Object.keys(p)
+                            })));
+                            
+                            chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+                                if (tabs[0]) {
+                                    chrome.tabs.sendMessage(tabs[0].id, {
+                                        type: 'CLOTHING_RESULTS',
+                                        results: productsList
+                                    }).catch((err) => {
+                                        console.log('Could not send results to content script:', err);
+                                    });
+                                }
+                            });
                         } catch (error) {
                             console.error('Error processing NLP items:', error);
                             document.getElementById('results').innerText = 'Error processing items: ' + error.message;
@@ -844,6 +865,44 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.location.href = targetPage;
             }
         });
+    });
+
+    // Listen for TRIGGER_FIND_CLOTHES messages from content script
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.type === 'TRIGGER_FIND_CLOTHES') {
+            document.getElementById('find-btn').click();
+            sendResponse({ received: true });
+        }
+        
+        if (message.type === 'AUTO_START_CAMERA') {
+            // Auto-start the camera when sidepanel is opened from toggle
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                startBtn.click();
+                console.log('Auto-starting camera from click');
+            }
+            sendResponse({ received: true });
+        }
+        
+        if (message.type === 'AUTO_START_CAMERA_AND_SEARCH') {
+            // Auto-start camera and then trigger search after a delay
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                startBtn.click();
+                console.log('Auto-starting camera and search');
+                
+                // Wait a bit for camera to initialize, then trigger search
+                setTimeout(() => {
+                    const findBtn = document.getElementById('find-btn');
+                    if (findBtn) {
+                        findBtn.click();
+                        console.log('Auto-triggered find clothes');
+                    }
+                }, 1500);
+            }
+            sendResponse({ received: true });
+        }
+        return true;
     });
 });
 
