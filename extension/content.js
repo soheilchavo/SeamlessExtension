@@ -539,10 +539,10 @@
                 
                 console.log('Deal ID:', dealId);
                 
-                // Step 2: Wait 10 seconds, then fund consumer (call endpoint regardless of blockchain/simulation mode)
+                // Step 2: Wait 13 seconds, then fund consumer (call endpoint regardless of blockchain/simulation mode)
                 setTimeout(() => {
                     console.log('Funding consumer...');
-                    checkoutBtn.innerHTML = 'halfway'; // Update button immediately
+                    checkoutBtn.innerHTML = 'Contract at 50%'; // Update button immediately
                     
                     const xhrConsumer = new XMLHttpRequest();
                     xhrConsumer.open('POST', 'https://seamlesscontract.onrender.com/api/fund-consumer', true);
@@ -560,10 +560,19 @@
                             console.error('Error parsing consumer response:', e);
                         }
                         
-                        // Step 3: Wait 7 more seconds, then fund store (call endpoint regardless of mode)
+                        // Step 3: Wait 13 more seconds, then fund store (call endpoint regardless of mode)
                         setTimeout(() => {
                             console.log('Funding store...');
-                            checkoutBtn.innerHTML = 'done'; // Update button immediately
+                            checkoutBtn.innerHTML = 'Contract Fulfilled ->'; // Update button immediately
+                            
+                            // Re-enable button and make it clickable to open Etherscan
+                            checkoutBtn.disabled = false;
+                            checkoutBtn.style.cursor = 'pointer';
+                            checkoutBtn.onclick = function(e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                window.open('https://sepolia.etherscan.io/address/0xC71ADfbDEA3a7BB990BB1841bec4Bb3706786009', '_blank');
+                            };
                             
                             const xhrStore = new XMLHttpRequest();
                             xhrStore.open('POST', 'https://seamlesscontract.onrender.com/api/fund-store', true);
@@ -590,7 +599,7 @@
                                 dealId: dealId,
                                 store_wallet: storeWallet
                             }));
-                        }, 10000);
+                        }, 13000);
                     };
                     
                     xhrConsumer.onerror = function() {
@@ -601,7 +610,7 @@
                         dealId: dealId,
                         consumer_wallet: consumerWallet
                     }));
-                }, 10000);
+                }, 13000);
                 
             } catch (error) {
                 console.error('Error creating escrow:', error);
