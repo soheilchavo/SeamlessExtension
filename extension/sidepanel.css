@@ -19,36 +19,13 @@ body {
 .header {
   display: flex;
   align-items: center;
-  gap: 10px;
+  justify-content: center;
   margin-bottom: 20px;
 }
 
-.logo-badge {
-  background: #1a1a1a;
-  color: white;
-  width: 28px;
-  height: 28px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-  flex-shrink: 0;
-}
-
-.logo-badge svg {
-  width: 16px;
-  height: 16px;
-  stroke: white;
-}
-
-h1 {
-  font-size: 20px;
-  color: #1a1a1a;
-  font-weight: 700;
-  letter-spacing: 2px;
-  margin: 0;
-  line-height: 1;
-  font-style: italic;
+.logo-image {
+  height: 40px;
+  width: auto;
 }
 
 /* Camera controls at the top */
