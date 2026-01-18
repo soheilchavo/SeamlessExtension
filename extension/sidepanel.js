@@ -7,6 +7,8 @@ console.log('Seamless extension loaded');
 
 let latestClothingData = null;
 let vision = null;
+let findClothesClickCount = 0;  // Track clicks to toggle behavior
+let hasStopped = false;  // Simple flag: has the current session already stopped?
 
 // ===== PERSISTENCE LAYER =====
 // Cache for API responses to avoid duplicate requests
@@ -17,6 +19,71 @@ const foundProducts = new Map();  // normalized key -> product data
 
 // Track pending searches to avoid duplicate concurrent requests
 const pendingSearches = new Set();
+
+// ===== PROMPT-BASED DEDUPLICATION =====
+// List of previously detected items to exclude from future detections
+const detectedItems = [];
+
+// Base prompt template
+const BASE_PROMPT = `Identify and list ONLY clothing items visible in the image. For each item, provide a specific product description optimized for shopping searches. Include: color(s), pattern/style (striped, solid, graphic, etc.), fit/type (slim, oversized, crop, etc.), sleeve length, visible material hints, and target gender/fit if obvious. Be concise but specific. Examples: "navy blue slim fit t-shirt", "black high-waisted skinny jeans", "white oversized linen button-up shirt", "burgundy wool cardigan with buttons". Ignore accessories, background, and non-clothing items. Separate items with commas only.`;
+// Build the prompt with exclusions
+function buildPrompt() {
+    if (detectedItems.length === 0) {
+        return BASE_PROMPT;
+    }
+
+    const exclusions = detectedItems.map(item => `"${item}"`).join(', ');
+    return `${BASE_PROMPT} Do NOT list any items similar to these already detected items: [${exclusions}]`;
+}
+
+// Update the running vision with new prompt
+function updateVisionPrompt() {
+    if (!vision) return;
+
+    const newPrompt = buildPrompt();
+    console.log('Updating prompt with exclusions:', detectedItems.length);
+    console.log('New prompt:', newPrompt);
+
+    try {
+        vision.updatePrompt(newPrompt);
+    } catch (e) {
+        console.error('Failed to update prompt:', e);
+    }
+}
+
+// Add a detected item to the exclusion list and update prompt
+function addDetectedItem(description) {
+    // Normalize the description
+    const normalized = description.toLowerCase().trim();
+
+    // Check if we already have a very similar item
+    const isDuplicate = detectedItems.some(item => {
+        const itemNorm = item.toLowerCase();
+        // Simple similarity check: if 70% of words match
+        const words1 = new Set(normalized.split(/\s+/));
+        const words2 = new Set(itemNorm.split(/\s+/));
+        const intersection = [...words1].filter(w => words2.has(w));
+        const similarity = intersection.length / Math.max(words1.size, words2.size);
+        return similarity > 0.7;
+    });
+
+    if (!isDuplicate) {
+        console.log('Adding new detected item:', description);
+        detectedItems.push(description);
+        updateVisionPrompt();
+        return true;
+    } else {
+        console.log('Item already detected (similar):', description);
+        return false;
+    }
+}
+
+// Clear all detected items (for fresh start)
+function clearDetectedItems() {
+    detectedItems.length = 0;
+    console.log('Cleared all detected items');
+    updateVisionPrompt();
+}
 
 // ===== SAVED PRODUCTS (localStorage) =====
 function getSavedProducts() {
@@ -159,9 +226,18 @@ function displayProducts(products) {
         return;
     }
 
-    console.log('Creating product cards...');
+    // Filter out error results, only keep successful products and loading states
+    const validProducts = products.filter(p => !p.error && (p.url || p.loading));
 
-    products.forEach((product, index) => {
+    if (validProducts.length === 0) {
+        console.log('No valid products to display (all errors filtered)');
+        productsContainer.innerHTML = '<div class="no-products">No products found</div>';
+        return;
+    }
+
+    console.log('Creating product cards for', validProducts.length, 'valid products');
+
+    validProducts.forEach((product, index) => {
         console.log(`Processing product ${index}:`, product);
 
         const productCard = document.createElement('div');
@@ -173,13 +249,6 @@ function displayProducts(products) {
                 <div class="product-loading">
                     <span class="loading-icon">⏳</span>
                     <span>Searching for ${product.itemName}...</span>
-                </div>
-            `;
-        } else if (product.error) {
-            productCard.innerHTML = `
-                <div class="product-error">
-                    <span class="error-icon">⚠️</span>
-                    <span>${product.itemName}: ${product.error}</span>
                 </div>
             `;
         } else if (product.url) {
@@ -214,13 +283,6 @@ function displayProducts(products) {
                     ${product.fromCache ? '<div class="from-cache">📦 Cached</div>' : ''}
                 </div>
                 <button class="shop-btn" data-url="${product.url}">Shop Now →</button>
-            `;
-        } else {
-            productCard.innerHTML = `
-                <div class="product-not-found">
-                    <span class="not-found-icon">🔍</span>
-                    <span>${product.itemName}: No product found</span>
-                </div>
             `;
         }
 
@@ -369,29 +431,36 @@ function displaySavedProducts() {
     });
 }
 
-// Function to process NLP text items (simple strings like "black t-shirt")
+// Function to process NLP text items with prompt-based deduplication
 async function processNLPItems(itemDescriptions) {
     console.log('=== PROCESS NLP ITEMS START ===');
     console.log('Item descriptions:', itemDescriptions);
-    console.log('Current cached items:', productCache.size);
+    console.log('Current detected items:', detectedItems.length);
     console.log('Current found products:', foundProducts.size);
 
     const productsContainer = document.getElementById('products');
+    const newItems = [];
 
-    for (const itemName of itemDescriptions) {
-        // Create a normalized key from the description
-        const normalizedKey = itemName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-        console.log('Normalized key:', normalizedKey);
+    // Check each item - add to detected list and collect new ones
+    for (const itemDesc of itemDescriptions) {
+        const description = itemDesc.trim();
+        if (!description || description.toLowerCase() === 'none') continue;
 
-        // Skip if we already have this item
-        if (foundProducts.has(normalizedKey)) {
-            console.log(`Skipping already found item: ${normalizedKey}`);
-            continue;
+        // Try to add to detected items (returns true if it's new)
+        if (addDetectedItem(description)) {
+            newItems.push(description);
         }
+    }
 
-        // Check if we're already searching for this
-        if (pendingSearches.has(normalizedKey)) {
-            console.log(`Already searching for: ${normalizedKey}`);
+    console.log('New items to search:', newItems);
+
+    // Search for new items only
+    for (const itemName of newItems) {
+        const normalizedKey = itemName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+
+        // Skip if already found or pending
+        if (foundProducts.has(normalizedKey) || pendingSearches.has(normalizedKey)) {
+            console.log(`Skipping already processed: ${normalizedKey}`);
             continue;
         }
 
@@ -631,15 +700,19 @@ document.addEventListener('DOMContentLoaded', async () => {
         vision = new RealtimeVision({
             apiUrl: 'https://cluster1.overshoot.ai/api/v0.2',
             apiKey: API_KEY,
-            prompt: 'List all clothing items you see. For each item, describe it with as many parameters as it would take to recreate it with an image search, for example "stripped black and yellow short sleeve t-shirt for men" or "levis low taper navy blue jeans for women". Separate items with commas. At the start of each clothing item, list the rectangular coordinates of the bounds of the clothing item relative to the screen, for example [200, 200, 400, 400] would mean that the item spans from (x:200, y:200) pixel coord to (x:400, y:400) pixel coord.',
+            prompt: buildPrompt(),  // Uses dynamic prompt with exclusions
             source: { type: 'camera', cameraFacing: 'user' },
             processing: {
-                clip_length_seconds: 3,
-                delay_seconds: 2,
+                clip_length_seconds: 10,
+                delay_seconds: 5,
                 fps: 10,
                 sampling_ratio: 0.1
             },
-            onResult: (result) => {
+            onResult: async (result) => {
+                // Prevent multiple UI updates and multiple stop calls
+                if (hasStopped) return;
+                hasStopped = true;
+
                 console.log('Got NLP result:', result);
 
                 // Extract the text response
@@ -659,19 +732,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (textResult.toLowerCase().includes('none') ||
                     textResult.toLowerCase().includes('no clothing')) {
                     console.log('No clothing detected');
-                    return;
+                    document.getElementById('results').innerText = 'No clothing detected. Click Find Clothes to try again.';
+                } else {
+                    // Parse comma-separated items and search for each
+                    const items = textResult
+                        .split(/[,\n]/)
+                        .map(s => s.trim())
+                        .filter(s => s.length > 0 && s.toLowerCase() !== 'none');
+
+                    console.log('Parsed items:', items);
+
+                    if (items.length > 0) {
+                        processNLPItems(items);
+                    }
+
+                    document.getElementById('results').innerText = textResult + '\n\nDetection complete.';
                 }
 
-                // Parse comma-separated items and search for each
-                const items = textResult
-                    .split(/[,\n]/)
-                    .map(s => s.trim())
-                    .filter(s => s.length > 0 && s.toLowerCase() !== 'none');
-
-                console.log('Parsed items:', items);
-
-                if (items.length > 0) {
-                    processNLPItems(items);
+                // Stop immediately so it does not keep fluctuating
+                try {
+                    console.log('Stopping Overshoot after first result...');
+                    await vision.stop();
+                    console.log('Vision stopped successfully');
+                } catch (e) {
+                    console.warn('Stop failed:', e);
                 }
             },
             onMessage: (message) => {
@@ -692,27 +776,41 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     document.getElementById('find-btn').onclick = () => {
+        console.log('Find Clothes clicked - starting detection...');
+
+        // Reset state for fresh detection
         document.getElementById('results').innerText = 'Detecting clothing...';
+        document.getElementById('products').innerHTML = '';
+        foundProducts.clear();
+        productCache.clear();
+        clearDetectedItems();
+        hasStopped = false;
+        findClothesClickCount = 0;
+
+        // Start detection immediately
         startVisionWithCamera();
     };
 
     // Clear all cached results
     document.getElementById('clear-btn').onclick = () => {
-        console.log('Clearing all cached products...');
+        console.log('Clearing all cached products and detected items...');
         productCache.clear();
         foundProducts.clear();
         pendingSearches.clear();
+        clearDetectedItems();  // Clear detected items and update prompt
         document.getElementById('products').innerHTML = '';
         document.getElementById('results').innerText = '';
-        console.log('Cache cleared!');
+        console.log('All caches cleared!');
     };
 
     // Stop Overshoot detection
     document.getElementById('stop-btn').onclick = async () => {
         if (vision) {
             console.log('Stopping Overshoot vision...');
+            hasStopped = true;
             await vision.stop();
             vision = null;
+            findClothesClickCount = 0;  // Reset click count
             document.getElementById('results').innerText = 'Detection stopped.';
             console.log('Vision stopped.');
         }
