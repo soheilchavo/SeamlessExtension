@@ -355,13 +355,6 @@
             }
         });
 
-        // Listen for results from sidepanel
-        chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-            if (message.type === 'CLOTHING_RESULTS') {
-                displayClothingCards(message.results, e.offsetX, e.offsetY);
-                sendResponse({ received: true });
-            }
-        });
     }
 
     // Display clothing cards overlaid on the video
