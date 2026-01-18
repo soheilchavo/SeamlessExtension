@@ -18,6 +18,72 @@ const foundProducts = new Map();  // normalized key -> product data
 // Track pending searches to avoid duplicate concurrent requests
 const pendingSearches = new Set();
 
+// ===== PROMPT-BASED DEDUPLICATION =====
+// List of previously detected items to exclude from future detections
+const detectedItems = [];
+
+// Base prompt template
+const BASE_PROMPT = 'List all clothing items you see. For each item, describe it with as many parameters as it would take to recreate it with an image search, for example "stripped black and yellow short sleeve t-shirt for men" or "levis low taper navy blue jeans for women". Separate items with commas.';
+
+// Build the prompt with exclusions
+function buildPrompt() {
+    if (detectedItems.length === 0) {
+        return BASE_PROMPT;
+    }
+
+    const exclusions = detectedItems.map(item => `"${item}"`).join(', ');
+    return `${BASE_PROMPT} Do NOT list any items similar to these already detected items: [${exclusions}]`;
+}
+
+// Update the running vision with new prompt
+function updateVisionPrompt() {
+    if (!vision) return;
+
+    const newPrompt = buildPrompt();
+    console.log('Updating prompt with exclusions:', detectedItems.length);
+    console.log('New prompt:', newPrompt);
+
+    try {
+        vision.updatePrompt(newPrompt);
+    } catch (e) {
+        console.error('Failed to update prompt:', e);
+    }
+}
+
+// Add a detected item to the exclusion list and update prompt
+function addDetectedItem(description) {
+    // Normalize the description
+    const normalized = description.toLowerCase().trim();
+
+    // Check if we already have a very similar item
+    const isDuplicate = detectedItems.some(item => {
+        const itemNorm = item.toLowerCase();
+        // Simple similarity check: if 70% of words match
+        const words1 = new Set(normalized.split(/\s+/));
+        const words2 = new Set(itemNorm.split(/\s+/));
+        const intersection = [...words1].filter(w => words2.has(w));
+        const similarity = intersection.length / Math.max(words1.size, words2.size);
+        return similarity > 0.7;
+    });
+
+    if (!isDuplicate) {
+        console.log('Adding new detected item:', description);
+        detectedItems.push(description);
+        updateVisionPrompt();
+        return true;
+    } else {
+        console.log('Item already detected (similar):', description);
+        return false;
+    }
+}
+
+// Clear all detected items (for fresh start)
+function clearDetectedItems() {
+    detectedItems.length = 0;
+    console.log('Cleared all detected items');
+    updateVisionPrompt();
+}
+
 // Normalize item description to create a stable key
 function normalizeItemKey(item) {
     // Create a stable key from the clothing type and color
@@ -125,9 +191,18 @@ function displayProducts(products) {
         return;
     }
 
-    console.log('Creating product cards...');
+    // Filter out error results, only keep successful products and loading states
+    const validProducts = products.filter(p => !p.error && (p.url || p.loading));
 
-    products.forEach((product, index) => {
+    if (validProducts.length === 0) {
+        console.log('No valid products to display (all errors filtered)');
+        productsContainer.innerHTML = '<div class="no-products">No products found</div>';
+        return;
+    }
+
+    console.log('Creating product cards for', validProducts.length, 'valid products');
+
+    validProducts.forEach((product, index) => {
         console.log(`Processing product ${index}:`, product);
 
         const productCard = document.createElement('div');
@@ -141,13 +216,6 @@ function displayProducts(products) {
                     <span>Searching for ${product.itemName}...</span>
                 </div>
             `;
-        } else if (product.error) {
-            productCard.innerHTML = `
-                <div class="product-error">
-                    <span class="error-icon">⚠️</span>
-                    <span>${product.itemName}: ${product.error}</span>
-                </div>
-            `;
         } else if (product.url) {
             productCard.innerHTML = `
                 ${product.image_url ? `<img class="product-image" src="${product.image_url}" alt="${product.itemName}" />` : ''}
@@ -158,13 +226,6 @@ function displayProducts(products) {
                     ${product.fromCache ? '<div class="from-cache">📦 Cached</div>' : ''}
                 </div>
                 <button class="shop-btn" data-url="${product.url}">Shop Now →</button>
-            `;
-        } else {
-            productCard.innerHTML = `
-                <div class="product-not-found">
-                    <span class="not-found-icon">🔍</span>
-                    <span>${product.itemName}: No product found</span>
-                </div>
             `;
         }
 
@@ -185,29 +246,36 @@ function displayProducts(products) {
     });
 }
 
-// Function to process NLP text items (simple strings like "black t-shirt")
+// Function to process NLP text items with prompt-based deduplication
 async function processNLPItems(itemDescriptions) {
     console.log('=== PROCESS NLP ITEMS START ===');
     console.log('Item descriptions:', itemDescriptions);
-    console.log('Current cached items:', productCache.size);
+    console.log('Current detected items:', detectedItems.length);
     console.log('Current found products:', foundProducts.size);
 
     const productsContainer = document.getElementById('products');
+    const newItems = [];
 
-    for (const itemName of itemDescriptions) {
-        // Create a normalized key from the description
-        const normalizedKey = itemName.toLowerCase().replace(/[^a-z0-9]/g, '-');
-        console.log('Normalized key:', normalizedKey);
+    // Check each item - add to detected list and collect new ones
+    for (const itemDesc of itemDescriptions) {
+        const description = itemDesc.trim();
+        if (!description || description.toLowerCase() === 'none') continue;
 
-        // Skip if we already have this item
-        if (foundProducts.has(normalizedKey)) {
-            console.log(`Skipping already found item: ${normalizedKey}`);
-            continue;
+        // Try to add to detected items (returns true if it's new)
+        if (addDetectedItem(description)) {
+            newItems.push(description);
         }
+    }
 
-        // Check if we're already searching for this
-        if (pendingSearches.has(normalizedKey)) {
-            console.log(`Already searching for: ${normalizedKey}`);
+    console.log('New items to search:', newItems);
+
+    // Search for new items only
+    for (const itemName of newItems) {
+        const normalizedKey = itemName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+
+        // Skip if already found or pending
+        if (foundProducts.has(normalizedKey) || pendingSearches.has(normalizedKey)) {
+            console.log(`Skipping already processed: ${normalizedKey}`);
             continue;
         }
 
@@ -419,11 +487,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         vision = new RealtimeVision({
             apiUrl: 'https://cluster1.overshoot.ai/api/v0.2',
             apiKey: API_KEY,
-            prompt: 'List all clothing items you see. For each item, describe it with as many parameters as it would take to recreate it with an image search, for example "stripped black and yellow short sleeve t-shirt for men" or "levis low taper navy blue jeans for women". Separate items with commas. At the start of each clothing item, list the rectangular coordinates of the bounds of the clothing item relative to the screen, for example [200, 200, 400, 400] would mean that the item spans from (x:200, y:200) pixel coord to (x:400, y:400) pixel coord.',
+            prompt: buildPrompt(),  // Uses dynamic prompt with exclusions
             source: { type: 'camera', cameraFacing: 'user' },
             processing: {
-                clip_length_seconds: 3,
-                delay_seconds: 2,
+                clip_length_seconds: 10,
+                delay_seconds: 5,
                 fps: 10,
                 sampling_ratio: 0.1
             },
@@ -486,13 +554,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Clear all cached results
     document.getElementById('clear-btn').onclick = () => {
-        console.log('Clearing all cached products...');
+        console.log('Clearing all cached products and detected items...');
         productCache.clear();
         foundProducts.clear();
         pendingSearches.clear();
+        clearDetectedItems();  // Clear detected items and update prompt
         document.getElementById('products').innerHTML = '';
         document.getElementById('results').innerText = '';
-        console.log('Cache cleared!');
+        console.log('All caches cleared!');
     };
 
     // Stop Overshoot detection

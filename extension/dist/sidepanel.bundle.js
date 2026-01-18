@@ -1,39 +1,39 @@
 var m = class extends Error {
-  constructor(e, t, r, n) {
-    super(e), this.name = "ApiError", this.statusCode = t, this.requestId = r, this.details = n;
+  constructor(e, t, n, o) {
+    super(e), this.name = "ApiError", this.statusCode = t, this.requestId = n, this.details = o;
   }
-}, y = class extends m {
+}, k = class extends m {
   constructor(e, t) {
     super(e, 401, t), this.name = "UnauthorizedError";
   }
-}, b = class extends m {
-  constructor(e, t, r) {
-    super(e, 422, t, r), this.name = "ValidationError";
+}, _ = class extends m {
+  constructor(e, t, n) {
+    super(e, 422, t, n), this.name = "ValidationError";
   }
-}, C = class extends m {
+}, P = class extends m {
   constructor(e, t) {
     super(e, 404, t), this.name = "NotFoundError";
   }
-}, S = class extends m {
+}, v = class extends m {
   constructor(e, t) {
     super(e), this.name = "NetworkError", this.cause = t;
   }
-}, I = class extends m {
-  constructor(e, t, r) {
-    super(e, 500, t, r), this.name = "ServerError";
+}, N = class extends m {
+  constructor(e, t, n) {
+    super(e, 500, t, n), this.name = "ServerError";
   }
-}, k = class {
+}, T = class {
   constructor(e) {
     if (!e.apiKey || typeof e.apiKey != "string")
       throw new Error("apiKey is required and must be a string");
     this.baseUrl = e.baseUrl, this.apiKey = e.apiKey;
   }
   async request(e, t = {}) {
-    const r = `${this.baseUrl}${e}`, n = new AbortController();
+    const n = `${this.baseUrl}${e}`, o = new AbortController();
     try {
-      const o = await fetch(r, {
+      const r = await fetch(n, {
         ...t,
-        signal: n.signal,
+        signal: o.signal,
         credentials: "include",
         headers: {
           "Content-Type": "application/json",
@@ -41,32 +41,32 @@ var m = class extends Error {
           ...t.headers
         }
       });
-      if (!o.ok) {
-        const s = await o.json().catch(() => ({
+      if (!r.ok) {
+        const s = await r.json().catch(() => ({
           error: "unknown_error",
-          message: o.statusText
+          message: r.statusText
         })), i = s.message || s.error;
-        throw o.status === 401 ? new y(
+        throw r.status === 401 ? new k(
           i || "Invalid or revoked API key",
           s.request_id
-        ) : o.status === 422 || o.status === 400 ? new b(
+        ) : r.status === 422 || r.status === 400 ? new _(
           i,
           s.request_id,
           s.details
-        ) : o.status === 404 ? new C(i, s.request_id) : o.status >= 500 ? new I(
+        ) : r.status === 404 ? new P(i, s.request_id) : r.status >= 500 ? new N(
           i,
           s.request_id,
           s.details
         ) : new m(
           i,
-          o.status,
+          r.status,
           s.request_id,
           s.details
         );
       }
-      return await o.json();
-    } catch (o) {
-      throw o instanceof m ? o : o instanceof Error ? new S(`Network error: ${o.message}`, o) : new S("Unknown network error");
+      return await r.json();
+    } catch (r) {
+      throw r instanceof m ? r : r instanceof Error ? new v(`Network error: ${r.message}`, r) : new v("Unknown network error");
     }
   }
   async createStream(e) {
@@ -135,7 +135,7 @@ var m = class extends Error {
   CLIP_LENGTH_SECONDS: { min: 0.1, max: 60 },
   DELAY_SECONDS: { min: 0, max: 60 },
   RATING: { min: 1, max: 5 }
-}, L = class {
+}, R = class {
   constructor(e = !1) {
     this.debugEnabled = e;
   }
@@ -155,9 +155,9 @@ var m = class extends Error {
   constructor(e) {
     super(e), this.name = "ValidationError";
   }
-}, _ = class {
+}, A = class {
   constructor(e) {
-    this.mediaStream = null, this.peerConnection = null, this.webSocket = null, this.streamId = null, this.keepaliveInterval = null, this.videoElement = null, this.isRunning = !1, this.validateConfig(e), this.config = e, this.logger = new L(e.debug ?? !1), this.client = new k({
+    this.mediaStream = null, this.peerConnection = null, this.webSocket = null, this.streamId = null, this.keepaliveInterval = null, this.videoElement = null, this.isRunning = !1, this.validateConfig(e), this.config = e, this.logger = new R(e.debug ?? !1), this.client = new T({
       baseUrl: e.apiUrl,
       apiKey: e.apiKey
     });
@@ -224,22 +224,22 @@ var m = class extends Error {
         });
       case "video":
         const t = document.createElement("video");
-        t.src = URL.createObjectURL(e.file), t.muted = !0, t.loop = !0, t.playsInline = !0, this.logger.debug("Loading video file:", e.file.name), await new Promise((o, s) => {
+        t.src = URL.createObjectURL(e.file), t.muted = !0, t.loop = !0, t.playsInline = !0, this.logger.debug("Loading video file:", e.file.name), await new Promise((r, s) => {
           const i = setTimeout(() => {
             s(new Error("Video loading timeout after 10 seconds"));
           }, 1e4);
           t.onloadedmetadata = () => {
-            clearTimeout(i), this.logger.debug("Video metadata loaded"), o();
-          }, t.onerror = (g) => {
-            clearTimeout(i), this.logger.error("Video loading error:", g), s(new Error("Failed to load video file"));
-          }, t.readyState >= 1 && (clearTimeout(i), o());
+            clearTimeout(i), this.logger.debug("Video metadata loaded"), r();
+          }, t.onerror = (u) => {
+            clearTimeout(i), this.logger.error("Video loading error:", u), s(new Error("Failed to load video file"));
+          }, t.readyState >= 1 && (clearTimeout(i), r());
         }), await t.play(), this.logger.debug("Video playback started");
-        const r = t.captureStream();
-        if (!r)
+        const n = t.captureStream();
+        if (!n)
           throw new Error("Failed to capture video stream");
-        if (r.getVideoTracks().length === 0)
+        if (n.getVideoTracks().length === 0)
           throw new Error("Video stream has no video tracks");
-        return this.videoElement = t, r;
+        return this.videoElement = t, n;
       default:
         throw new Error(`Unknown source type: ${e.type}`);
     }
@@ -250,18 +250,18 @@ var m = class extends Error {
   async getStreamFps(e, t) {
     if (!e)
       return this.logger.warn("Stream is null, using fallback FPS"), c.FALLBACK_FPS;
-    const r = e.getVideoTracks();
-    if (!r || r.length === 0)
+    const n = e.getVideoTracks();
+    if (!n || n.length === 0)
       return this.logger.warn("No video tracks found, using fallback FPS"), c.FALLBACK_FPS;
-    const n = r[0];
-    if (!n)
+    const o = n[0];
+    if (!o)
       return this.logger.warn("First video track is null, using fallback FPS"), c.FALLBACK_FPS;
     if (t.type === "camera") {
-      const s = n.getSettings().frameRate ?? c.FALLBACK_FPS;
+      const s = o.getSettings().frameRate ?? c.FALLBACK_FPS;
       return this.logger.debug("Detected camera FPS:", s), s;
     }
-    return t.type === "video" && this.videoElement && (await new Promise((o, s) => {
-      this.videoElement.readyState >= 1 ? o() : (this.videoElement.onloadedmetadata = () => o(), this.videoElement.onerror = () => s(new Error("Failed to load video metadata")));
+    return t.type === "video" && this.videoElement && (await new Promise((r, s) => {
+      this.videoElement.readyState >= 1 ? r() : (this.videoElement.onloadedmetadata = () => r(), this.videoElement.onerror = () => s(new Error("Failed to load video metadata")));
     }), this.logger.debug("Using fallback FPS for video file")), c.FALLBACK_FPS;
   }
   /**
@@ -300,8 +300,8 @@ var m = class extends Error {
       const t = this.mediaStream.getVideoTracks()[0];
       if (!t)
         throw new Error("No video track available");
-      const r = await this.getStreamFps(this.mediaStream, e), n = this.config.iceServers ?? c.ICE_SERVERS;
-      this.logger.debug("Creating peer connection with ICE servers"), this.peerConnection = new RTCPeerConnection({ iceServers: n }), this.peerConnection.onicecandidate = (i) => {
+      const n = await this.getStreamFps(this.mediaStream, e), o = this.config.iceServers ?? c.ICE_SERVERS;
+      this.logger.debug("Creating peer connection with ICE servers"), this.peerConnection = new RTCPeerConnection({ iceServers: o }), this.peerConnection.onicecandidate = (i) => {
         i.candidate ? this.logger.debug("ICE candidate:", {
           type: i.candidate.type,
           protocol: i.candidate.protocol
@@ -312,8 +312,8 @@ var m = class extends Error {
           this.peerConnection?.iceConnectionState
         );
       }, this.peerConnection.addTrack(t, this.mediaStream);
-      const o = await this.peerConnection.createOffer();
-      if (await this.peerConnection.setLocalDescription(o), !this.peerConnection.localDescription)
+      const r = await this.peerConnection.createOffer();
+      if (await this.peerConnection.setLocalDescription(r), !this.peerConnection.localDescription)
         throw new Error("Failed to create local description");
       this.logger.debug("Creating stream on server");
       const s = await this.client.createStream({
@@ -321,7 +321,7 @@ var m = class extends Error {
           type: "offer",
           sdp: this.peerConnection.localDescription.sdp
         },
-        processing: this.getProcessingConfig(r),
+        processing: this.getProcessingConfig(n),
         inference: {
           prompt: this.config.prompt,
           backend: this.config.backend ?? c.BACKEND,
@@ -347,12 +347,12 @@ var m = class extends Error {
     this.logger.debug("Setting up keepalive with interval:", t, "ms"), this.keepaliveInterval = window.setInterval(async () => {
       try {
         this.streamId && (await this.client.renewLease(this.streamId), this.logger.debug("Lease renewed"));
-      } catch (r) {
-        this.logger.error("Keepalive failed:", r);
-        const n = new Error(
-          `Keepalive failed: ${r instanceof Error ? r.message : String(r)}`
+      } catch (n) {
+        this.logger.error("Keepalive failed:", n);
+        const o = new Error(
+          `Keepalive failed: ${n instanceof Error ? n.message : String(n)}`
         );
-        await this.handleFatalError(n);
+        await this.handleFatalError(o);
       }
     }, t);
   }
@@ -364,13 +364,13 @@ var m = class extends Error {
       this.logger.debug("WebSocket connected"), this.webSocket && this.webSocket.send(JSON.stringify({ api_key: this.config.apiKey }));
     }, this.webSocket.onmessage = (t) => {
       try {
-        const r = JSON.parse(t.data);
-        this.config.onResult(r);
-      } catch (r) {
-        const n = new Error(
-          `Failed to parse WebSocket message: ${r instanceof Error ? r.message : String(r)}`
+        const n = JSON.parse(t.data);
+        this.config.onResult(n);
+      } catch (n) {
+        const o = new Error(
+          `Failed to parse WebSocket message: ${n instanceof Error ? n.message : String(n)}`
         );
-        this.handleNonFatalError(n);
+        this.handleNonFatalError(o);
       }
     }, this.webSocket.onerror = () => {
       this.logger.error("WebSocket error occurred");
@@ -380,14 +380,14 @@ var m = class extends Error {
       if (this.isRunning)
         if (t.code === 1008) {
           this.logger.error("WebSocket authentication failed");
-          const r = new Error(
+          const n = new Error(
             "WebSocket authentication failed: Invalid or revoked API key"
           );
-          this.handleFatalError(r);
+          this.handleFatalError(n);
         } else {
           this.logger.warn("WebSocket closed unexpectedly:", t.code);
-          const r = new Error("WebSocket closed unexpectedly");
-          this.handleFatalError(r);
+          const n = new Error("WebSocket closed unexpectedly");
+          this.handleFatalError(n);
         }
       else
         this.logger.debug("WebSocket closed");
@@ -463,42 +463,68 @@ var m = class extends Error {
     this.logger.debug("Cleaning up resources"), this.keepaliveInterval && (window.clearInterval(this.keepaliveInterval), this.keepaliveInterval = null), this.webSocket && (this.webSocket.close(), this.webSocket = null), this.peerConnection && (this.peerConnection.close(), this.peerConnection = null), this.mediaStream && (this.mediaStream.getTracks().forEach((e) => e.stop()), this.mediaStream = null), this.videoElement && (this.videoElement.pause(), URL.revokeObjectURL(this.videoElement.src), this.videoElement.remove(), this.videoElement = null), this.streamId = null, this.logger.debug("Cleanup complete");
   }
 };
-const N = "ovs_148da6c73eff6fdde6431e7bc82e0dd8", E = "https://web-production-a1e61a.up.railway.app/get-product";
+const F = "ovs_148da6c73eff6fdde6431e7bc82e0dd8", b = "https://web-production-a1e61a.up.railway.app/get-product";
 console.log("Seamless extension loaded");
-let u = null;
-const p = /* @__PURE__ */ new Map(), d = /* @__PURE__ */ new Map(), h = /* @__PURE__ */ new Set();
-function T(e, t) {
-  const r = (f) => f.toLowerCase().replace(/[^a-z0-9]/g, ""), n = r(e), o = r(t);
-  if (n.includes(o) || o.includes(n)) return !0;
-  const s = new Set(e.toLowerCase().split(/\s+/)), i = new Set(t.toLowerCase().split(/\s+/)), g = [...s].filter((f) => i.has(f)), v = /* @__PURE__ */ new Set([...s, ...i]);
-  return g.length / v.size > 0.6;
+let g = null;
+const S = /* @__PURE__ */ new Map(), d = /* @__PURE__ */ new Map(), p = /* @__PURE__ */ new Set(), h = [], C = 'List all clothing items you see. For each item, describe it with as many parameters as it would take to recreate it with an image search, for example "stripped black and yellow short sleeve t-shirt for men" or "levis low taper navy blue jeans for women". Separate items with commas.';
+function I() {
+  if (h.length === 0)
+    return C;
+  const e = h.map((t) => `"${t}"`).join(", ");
+  return `${C} Do NOT list any items similar to these already detected items: [${e}]`;
 }
-function P(e) {
-  for (const [t, r] of p.entries())
-    if (T(e, t))
-      return console.log(`Found similar cached item: "${t}" for "${e}"`), r;
+function L() {
+  if (!g) return;
+  const e = I();
+  console.log("Updating prompt with exclusions:", h.length), console.log("New prompt:", e);
+  try {
+    g.updatePrompt(e);
+  } catch (t) {
+    console.error("Failed to update prompt:", t);
+  }
+}
+function O(e) {
+  const t = e.toLowerCase().trim();
+  return h.some((o) => {
+    const r = o.toLowerCase(), s = new Set(t.split(/\s+/)), i = new Set(r.split(/\s+/));
+    return [...s].filter((y) => i.has(y)).length / Math.max(s.size, i.size) > 0.7;
+  }) ? (console.log("Item already detected (similar):", e), !1) : (console.log("Adding new detected item:", e), h.push(e), L(), !0);
+}
+function D() {
+  h.length = 0, console.log("Cleared all detected items"), L();
+}
+function x(e, t) {
+  const n = (f) => f.toLowerCase().replace(/[^a-z0-9]/g, ""), o = n(e), r = n(t);
+  if (o.includes(r) || r.includes(o)) return !0;
+  const s = new Set(e.toLowerCase().split(/\s+/)), i = new Set(t.toLowerCase().split(/\s+/)), u = [...s].filter((f) => i.has(f)), E = /* @__PURE__ */ new Set([...s, ...i]);
+  return u.length / E.size > 0.6;
+}
+function $(e) {
+  for (const [t, n] of S.entries())
+    if (x(e, t))
+      return console.log(`Found similar cached item: "${t}" for "${e}"`), n;
   return null;
 }
-async function R(e) {
-  console.log("=== SEARCH PRODUCT START ==="), console.log("Item name:", e), console.log("Railway URL:", E);
+async function U(e) {
+  console.log("=== SEARCH PRODUCT START ==="), console.log("Item name:", e), console.log("Railway URL:", b);
   try {
     const t = JSON.stringify({ item_name: e });
     console.log("Request body:", t), console.log("Sending fetch request...");
-    const r = await fetch(E, {
+    const n = await fetch(b, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: t
     });
-    console.log("Response received!"), console.log("Response status:", r.status), console.log("Response ok:", r.ok), console.log("Response headers:", [...r.headers.entries()]);
-    const n = await r.text();
-    console.log("Response text:", n);
-    let o;
+    console.log("Response received!"), console.log("Response status:", n.status), console.log("Response ok:", n.ok), console.log("Response headers:", [...n.headers.entries()]);
+    const o = await n.text();
+    console.log("Response text:", o);
+    let r;
     try {
-      o = JSON.parse(n), console.log("Parsed response data:", o);
+      r = JSON.parse(o), console.log("Parsed response data:", r);
     } catch (s) {
-      return console.error("Failed to parse response as JSON:", s), { error: "Invalid JSON response: " + n.substring(0, 100) };
+      return console.error("Failed to parse response as JSON:", s), { error: "Invalid JSON response: " + o.substring(0, 100) };
     }
-    return console.log("=== SEARCH PRODUCT SUCCESS ==="), o;
+    return console.log("=== SEARCH PRODUCT SUCCESS ==="), r;
   } catch (t) {
     return console.error("=== SEARCH PRODUCT ERROR ==="), console.error("Error type:", t.name), console.error("Error message:", t.message), console.error("Full error:", t), { error: t.message };
   }
@@ -514,92 +540,88 @@ function w(e) {
     console.log("No products to display"), t.innerHTML = '<div class="no-products">No products found</div>';
     return;
   }
-  console.log("Creating product cards..."), e.forEach((r, n) => {
-    console.log(`Processing product ${n}:`, r);
-    const o = document.createElement("div");
-    o.className = "product-card", r.loading ? o.innerHTML = `
+  const n = e.filter((o) => !o.error && (o.url || o.loading));
+  if (n.length === 0) {
+    console.log("No valid products to display (all errors filtered)"), t.innerHTML = '<div class="no-products">No products found</div>';
+    return;
+  }
+  console.log("Creating product cards for", n.length, "valid products"), n.forEach((o, r) => {
+    console.log(`Processing product ${r}:`, o);
+    const s = document.createElement("div");
+    s.className = "product-card", o.loading ? s.innerHTML = `
                 <div class="product-loading">
                     <span class="loading-icon">⏳</span>
-                    <span>Searching for ${r.itemName}...</span>
+                    <span>Searching for ${o.itemName}...</span>
                 </div>
-            ` : r.error ? o.innerHTML = `
-                <div class="product-error">
-                    <span class="error-icon">⚠️</span>
-                    <span>${r.itemName}: ${r.error}</span>
-                </div>
-            ` : r.url ? o.innerHTML = `
-                ${r.image_url ? `<img class="product-image" src="${r.image_url}" alt="${r.itemName}" />` : ""}
+            ` : o.url && (s.innerHTML = `
+                ${o.image_url ? `<img class="product-image" src="${o.image_url}" alt="${o.itemName}" />` : ""}
                 <div class="product-info">
-                    <div class="product-name">${r.itemName || "Product"}</div>
-                    ${r.name ? `<div class="product-title">${r.name}</div>` : ""}
-                    ${r.price ? `<div class="product-price">${r.price}</div>` : ""}
-                    ${r.fromCache ? '<div class="from-cache">📦 Cached</div>' : ""}
+                    <div class="product-name">${o.itemName || "Product"}</div>
+                    ${o.name ? `<div class="product-title">${o.name}</div>` : ""}
+                    ${o.price ? `<div class="product-price">${o.price}</div>` : ""}
+                    ${o.fromCache ? '<div class="from-cache">📦 Cached</div>' : ""}
                 </div>
-                <button class="shop-btn" data-url="${r.url}">Shop Now →</button>
-            ` : o.innerHTML = `
-                <div class="product-not-found">
-                    <span class="not-found-icon">🔍</span>
-                    <span>${r.itemName}: No product found</span>
-                </div>
-            `, t.appendChild(o);
-  }), console.log("Final container innerHTML length:", t.innerHTML.length), console.log("Final container children count:", t.children.length), t.querySelectorAll(".shop-btn").forEach((r) => {
-    r.onclick = () => {
-      const n = r.getAttribute("data-url");
-      n && window.open(n, "_blank");
+                <button class="shop-btn" data-url="${o.url}">Shop Now →</button>
+            `), t.appendChild(s);
+  }), console.log("Final container innerHTML length:", t.innerHTML.length), console.log("Final container children count:", t.children.length), t.querySelectorAll(".shop-btn").forEach((o) => {
+    o.onclick = () => {
+      const r = o.getAttribute("data-url");
+      r && window.open(r, "_blank");
     };
   });
 }
-async function A(e) {
-  console.log("=== PROCESS NLP ITEMS START ==="), console.log("Item descriptions:", e), console.log("Current cached items:", p.size), console.log("Current found products:", d.size);
-  const t = document.getElementById("products");
-  for (const r of e) {
-    const n = r.toLowerCase().replace(/[^a-z0-9]/g, "-");
-    if (console.log("Normalized key:", n), d.has(n)) {
-      console.log(`Skipping already found item: ${n}`);
+async function M(e) {
+  console.log("=== PROCESS NLP ITEMS START ==="), console.log("Item descriptions:", e), console.log("Current detected items:", h.length), console.log("Current found products:", d.size);
+  const t = document.getElementById("products"), n = [];
+  for (const o of e) {
+    const r = o.trim();
+    !r || r.toLowerCase() === "none" || O(r) && n.push(r);
+  }
+  console.log("New items to search:", n);
+  for (const o of n) {
+    const r = o.toLowerCase().replace(/[^a-z0-9]/g, "-");
+    if (d.has(r) || p.has(r)) {
+      console.log(`Skipping already processed: ${r}`);
       continue;
     }
-    if (h.has(n)) {
-      console.log(`Already searching for: ${n}`);
-      continue;
-    }
-    const o = P(r);
-    if (o) {
-      console.log("Using cached result for:", r), d.set(n, {
-        itemName: r,
-        normalizedKey: n,
-        ...o,
+    const s = $(o);
+    if (s) {
+      console.log("Using cached result for:", o), d.set(r, {
+        itemName: o,
+        normalizedKey: r,
+        ...s,
         fromCache: !0
       }), w([...d.values()]);
       continue;
     }
-    if (h.add(n), d.size > 0) {
-      const s = [...d.values()];
-      s.push({ itemName: r, loading: !0 }), w(s);
+    if (p.add(r), d.size > 0) {
+      const i = [...d.values()];
+      i.push({ itemName: o, loading: !0 }), w(i);
     } else
       t.innerHTML = '<div class="loading">🔍 Searching for products...</div>';
     try {
-      const s = await R(r);
-      console.log("Search result for", r, ":", s), p.set(r, s), d.set(n, {
-        itemName: r,
-        normalizedKey: n,
-        ...s
+      const i = await U(o);
+      console.log("Search result for", o, ":", i), S.set(o, i), d.set(r, {
+        itemName: o,
+        normalizedKey: r,
+        ...i
       });
-    } catch (s) {
-      console.error("Error searching for", r, ":", s), d.set(n, {
-        itemName: r,
-        normalizedKey: n,
-        error: s.message
+    } catch (i) {
+      console.error("Error searching for", o, ":", i), d.set(r, {
+        itemName: o,
+        normalizedKey: r,
+        error: i.message
       });
     } finally {
-      h.delete(n);
+      p.delete(r);
     }
   }
   d.size > 0 && (console.log("Displaying all found products:", d.size), w([...d.values()])), console.log("=== PROCESS NLP ITEMS END ===");
 }
 document.addEventListener("DOMContentLoaded", async () => {
   async function e() {
-    const n = (await navigator.mediaDevices.enumerateDevices()).filter((s) => s.kind === "videoinput"), o = document.getElementById("camera-select");
-    o.innerHTML = n.map(
+    const o = (await navigator.mediaDevices.enumerateDevices()).filter((s) => s.kind === "videoinput"), r = document.getElementById("camera-select");
+    r.innerHTML = o.map(
       (s, i) => `<option value="${s.deviceId}">${s.label || "Camera " + (i + 1)}</option>`
     ).join("");
   }
@@ -609,52 +631,53 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.getElementById("results").innerText = "Please select a camera first!";
       return;
     }
-    u && await u.stop(), u = new _({
+    g && await g.stop(), g = new A({
       apiUrl: "https://cluster1.overshoot.ai/api/v0.2",
-      apiKey: N,
-      prompt: "List all clothing items you see. For each item, describe it in detail for image search, like: striped black and yellow short sleeve t-shirt for men, or navy blue low taper jeans for women. Separate items with commas.",
+      apiKey: F,
+      prompt: I(),
+      // Uses dynamic prompt with exclusions
       source: { type: "camera", cameraFacing: "user" },
       processing: {
-        clip_length_seconds: 3,
-        delay_seconds: 2,
+        clip_length_seconds: 10,
+        delay_seconds: 5,
         fps: 10,
         sampling_ratio: 0.1
       },
-      onResult: (o) => {
-        console.log("Got NLP result:", o);
+      onResult: (r) => {
+        console.log("Got NLP result:", r);
         let s = "";
-        if (typeof o == "string" ? s = o : o.result ? s = typeof o.result == "string" ? o.result : JSON.stringify(o.result) : s = JSON.stringify(o), console.log("Text result:", s), document.getElementById("results").innerText = s, s.toLowerCase().includes("none") || s.toLowerCase().includes("no clothing")) {
+        if (typeof r == "string" ? s = r : r.result ? s = typeof r.result == "string" ? r.result : JSON.stringify(r.result) : s = JSON.stringify(r), console.log("Text result:", s), document.getElementById("results").innerText = s, s.toLowerCase().includes("none") || s.toLowerCase().includes("no clothing")) {
           console.log("No clothing detected");
           return;
         }
-        const i = s.split(/[,\n]/).map((g) => g.trim()).filter((g) => g.length > 0 && g.toLowerCase() !== "none");
-        console.log("Parsed items:", i), i.length > 0 && A(i);
+        const i = s.split(/[,\n]/).map((u) => u.trim()).filter((u) => u.length > 0 && u.toLowerCase() !== "none");
+        console.log("Parsed items:", i), i.length > 0 && M(i);
       },
-      onMessage: (o) => {
-        console.log("Got message:", o);
+      onMessage: (r) => {
+        console.log("Got message:", r);
       },
-      onStatusChange: (o) => {
-        console.log("Status changed:", o), document.getElementById("results").innerText = "Status: " + o;
+      onStatusChange: (r) => {
+        console.log("Status changed:", r), document.getElementById("results").innerText = "Status: " + r;
       },
-      onError: (o) => {
-        console.error("Vision error:", o), document.getElementById("results").innerText = "An error occurred: " + (o.message || JSON.stringify(o));
+      onError: (r) => {
+        console.error("Vision error:", r), document.getElementById("results").innerText = "An error occurred: " + (r.message || JSON.stringify(r));
       }
-    }), await u.start(), console.log("Vision started with camera.");
+    }), await g.start(), console.log("Vision started with camera.");
   }
   document.getElementById("find-btn").onclick = () => {
     document.getElementById("results").innerText = "Detecting clothing...", t();
   }, document.getElementById("clear-btn").onclick = () => {
-    console.log("Clearing all cached products..."), p.clear(), d.clear(), h.clear(), document.getElementById("products").innerHTML = "", document.getElementById("results").innerText = "", console.log("Cache cleared!");
+    console.log("Clearing all cached products and detected items..."), S.clear(), d.clear(), p.clear(), D(), document.getElementById("products").innerHTML = "", document.getElementById("results").innerText = "", console.log("All caches cleared!");
   }, document.getElementById("stop-btn").onclick = async () => {
-    u && (console.log("Stopping Overshoot vision..."), await u.stop(), u = null, document.getElementById("results").innerText = "Detection stopped.", console.log("Vision stopped."));
+    g && (console.log("Stopping Overshoot vision..."), await g.stop(), g = null, document.getElementById("results").innerText = "Detection stopped.", console.log("Vision stopped."));
   }, document.getElementById("start-btn").onclick = async () => {
-    const n = document.getElementById("camera-select").value, o = document.getElementById("preview");
-    console.log("Starting camera with device:", n);
+    const o = document.getElementById("camera-select").value, r = document.getElementById("preview");
+    console.log("Starting camera with device:", o);
     try {
       const s = await navigator.mediaDevices.getUserMedia({
-        video: { deviceId: n ? { exact: n } : void 0 }
+        video: { deviceId: o ? { exact: o } : void 0 }
       });
-      o.srcObject = s, console.log("Camera started successfully"), await e();
+      r.srcObject = s, console.log("Camera started successfully"), await e();
     } catch (s) {
       console.error("Error starting camera:", s), document.getElementById("results").innerText = "Error starting camera: " + s.message;
     }
