@@ -73,7 +73,6 @@ function displaySavedProducts() {
                 </button>
                 ${imageHtml}
                 <div class="product-info">
-                    <div class="product-name">${product.itemName || 'Product'}</div>
                     ${product.name ? `<div class="product-title">${product.name}</div>` : ''}
                     ${product.price ? `<div class="product-price">${product.price}</div>` : ''}
                 </div>
