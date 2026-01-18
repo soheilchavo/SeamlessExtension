@@ -254,10 +254,20 @@ function displayProducts(products) {
         } else if (product.url) {
             // Debug: Check if image_url exists
             console.log('Product data:', product);
-            console.log('Image URL:', product.image_url);
+            console.log('Available image properties:', {
+                image_url: product.image_url,
+                imageUrl: product.imageUrl,
+                image: product.image,
+                img: product.img,
+                photo: product.photo
+            });
 
-            const imageHtml = product.image_url
-                ? `<img class="product-image" src="${product.image_url}" alt="${product.itemName}" onerror="this.style.display='none'" />`
+            // Try multiple possible property names for image
+            const imageUrl = product.image_url || product.imageUrl || product.image || product.img || product.photo;
+            console.log('Resolved image URL:', imageUrl);
+
+            const imageHtml = imageUrl
+                ? `<img class="product-image" src="${imageUrl}" alt="${product.itemName}" onerror="this.style.display='none'" />`
                 : `<div class="product-image product-placeholder">
                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2">
                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -735,7 +745,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                             await processNLPItems(items);
                             
                             // Send full product data to content script immediately after processing
-                            const productsList = [...foundProducts.values()];
+                            const productsList = [...foundProducts.values()].map(p => ({
+                                ...p,
+                                // Normalize image_url - try multiple property names
+                                image_url: p.image_url || p.imageUrl || p.image || p.img || p.photo || null
+                            }));
                             console.log('Sending products to content script:', productsList);
                             console.log('Product details:', productsList.map(p => ({
                                 itemName: p.itemName,

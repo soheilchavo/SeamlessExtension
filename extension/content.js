@@ -1,6 +1,6 @@
 // Content script for YouTube - click on clothing to find it
 
-(function() {
+(function () {
     'use strict';
 
     let seamlessMode = false;
@@ -16,7 +16,6 @@
         toggle.id = 'seamless-toggle';
         toggle.innerHTML = `
             <div class="seamless-toggle-inner">
-                <span class="seamless-icon">👕</span>
                 <span class="seamless-label">Seamless</span>
                 <div class="seamless-switch">
                     <div class="seamless-switch-knob"></div>
@@ -33,35 +32,39 @@
                 top: 80px;
                 right: 20px;
                 z-index: 9999;
-                background: rgba(0, 0, 0, 0.85);
+                background: rgba(255, 255, 255, 0.1);
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
                 border-radius: 30px;
-                padding: 8px 16px;
+                padding: 10px 20px;
                 cursor: pointer;
                 user-select: none;
                 font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
                 transition: all 0.3s ease;
-                border: 2px solid transparent;
+                border: 1.5px solid rgba(255, 255, 255, 0.2);
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
             }
             #seamless-toggle:hover {
-                background: rgba(0, 0, 0, 0.95);
+                background: rgba(255, 255, 255, 0.15);
+                border-color: rgba(255, 255, 255, 0.3);
                 transform: scale(1.02);
+                box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
             }
             #seamless-toggle.active {
-                border-color: #667eea;
-                box-shadow: 0 0 20px rgba(102, 126, 234, 0.5);
+                background: rgba(102, 126, 234, 0.15);
+                border-color: rgba(102, 126, 234, 0.4);
+                box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
             }
             .seamless-toggle-inner {
                 display: flex;
                 align-items: center;
-                gap: 10px;
-            }
-            .seamless-icon {
-                font-size: 20px;
+                gap: 12px;
             }
             .seamless-label {
                 color: white;
-                font-size: 14px;
-                font-weight: 600;
+                font-size: 13px;
+                font-weight: 700;
+                letter-spacing: 0.5px;
             }
             .seamless-switch {
                 width: 40px;
@@ -373,23 +376,23 @@
 
         const container = document.createElement('div');
         container.className = 'seamless-card-container';
-        
+
         // Position cards in a grid around the click point
         const startX = Math.max(10, clickX - 100);
         const startY = Math.max(50, clickY - 50);
-        
+
         container.style.left = startX + 'px';
         container.style.top = startY + 'px';
 
         results.forEach((product, index) => {
             const card = document.createElement('div');
             card.className = 'seamless-clothing-card';
-            
+
             // Use product image if available
             const imageUrl = product.image_url || product.imageUrl || '';
             const productName = product.itemName || 'Product';
             const productUrl = product.url || 'https://www.google.com';
-            
+
             card.innerHTML = `
                 <div class="seamless-card-image">
                     ${imageUrl ? `<img src="${imageUrl}" alt="${productName}" />` : '<div class="seamless-no-image">📷</div>'}
@@ -399,13 +402,13 @@
                     <button class="seamless-buy-btn">Buy Now</button>
                 </div>
             `;
-            
+
             // Click handler for Buy Now button
             card.querySelector('.seamless-buy-btn').onclick = (e) => {
                 e.stopPropagation();
                 window.open(productUrl, '_blank');
             };
-            
+
             // Also allow clicking the card itself to buy
             card.style.cursor = 'pointer';
             card.onclick = (e) => {
@@ -414,7 +417,7 @@
                     window.open(productUrl, '_blank');
                 }
             };
-            
+
             container.appendChild(card);
         });
 
