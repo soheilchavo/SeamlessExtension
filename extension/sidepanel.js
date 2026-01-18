@@ -135,6 +135,7 @@ async function searchProduct(itemName) {
         console.log('Request body:', requestBody);
 
         console.log('Sending fetch request...');
+        
         const response = await fetch(RAILWAY_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -144,7 +145,6 @@ async function searchProduct(itemName) {
         console.log('Response received!');
         console.log('Response status:', response.status);
         console.log('Response ok:', response.ok);
-        console.log('Response headers:', [...response.headers.entries()]);
 
         const responseText = await response.text();
         console.log('Response text:', responseText);
@@ -247,32 +247,20 @@ function displayProducts(products) {
     });
 }
 
-// Function to process NLP text items with prompt-based deduplication
+// Function to process NLP text items
 async function processNLPItems(itemDescriptions) {
     console.log('=== PROCESS NLP ITEMS START ===');
     console.log('Item descriptions:', itemDescriptions);
-    console.log('Current detected items:', detectedItems.length);
     console.log('Current found products:', foundProducts.size);
 
     const productsContainer = document.getElementById('products');
-    const newItems = [];
 
-    // Check each item - add to detected list and collect new ones
-    for (const itemDesc of itemDescriptions) {
-        const description = itemDesc.trim();
+    // Search for all items directly (no deduplication needed during first detection)
+    for (const itemName of itemDescriptions) {
+        const description = itemName.trim();
         if (!description || description.toLowerCase() === 'none') continue;
 
-        // Try to add to detected items (returns true if it's new)
-        if (addDetectedItem(description)) {
-            newItems.push(description);
-        }
-    }
-
-    console.log('New items to search:', newItems);
-
-    // Search for new items only
-    for (const itemName of newItems) {
-        const normalizedKey = itemName.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        const normalizedKey = description.toLowerCase().replace(/[^a-z0-9]/g, '-');
 
         // Skip if already found or pending
         if (foundProducts.has(normalizedKey) || pendingSearches.has(normalizedKey)) {
@@ -281,11 +269,11 @@ async function processNLPItems(itemDescriptions) {
         }
 
         // Check cache for similar items
-        const cachedResult = findSimilarCachedItem(itemName);
+        const cachedResult = findSimilarCachedItem(description);
         if (cachedResult) {
-            console.log('Using cached result for:', itemName);
+            console.log('Using cached result for:', description);
             foundProducts.set(normalizedKey, {
-                itemName,
+                itemName: description,
                 normalizedKey,
                 ...cachedResult,
                 fromCache: true
@@ -300,29 +288,29 @@ async function processNLPItems(itemDescriptions) {
         // Show loading state
         if (foundProducts.size > 0) {
             const currentProducts = [...foundProducts.values()];
-            currentProducts.push({ itemName, loading: true });
+            currentProducts.push({ itemName: description, loading: true });
             displayProducts(currentProducts);
         } else {
             productsContainer.innerHTML = '<div class="loading">🔍 Searching for products...</div>';
         }
 
         try {
-            const result = await searchProduct(itemName);
-            console.log('Search result for', itemName, ':', result);
+            const result = await searchProduct(description);
+            console.log('Search result for', description, ':', result);
 
             // Cache the result
-            productCache.set(itemName, result);
+            productCache.set(description, result);
 
             // Store in found products
             foundProducts.set(normalizedKey, {
-                itemName,
+                itemName: description,
                 normalizedKey,
                 ...result
             });
         } catch (error) {
-            console.error('Error searching for', itemName, ':', error);
+            console.error('Error searching for', description, ':', error);
             foundProducts.set(normalizedKey, {
-                itemName,
+                itemName: description,
                 normalizedKey,
                 error: error.message
             });
@@ -531,7 +519,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                     console.log('Parsed items:', items);
 
                     if (items.length > 0) {
-                        processNLPItems(items);
+                        try {
+                            await processNLPItems(items);
+                        } catch (error) {
+                            console.error('Error processing NLP items:', error);
+                            document.getElementById('results').innerText = 'Error processing items: ' + error.message;
+                        }
                     }
 
                     document.getElementById('results').innerText = textResult + '\n\nDetection complete.';
