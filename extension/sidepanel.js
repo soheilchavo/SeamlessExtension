@@ -85,6 +85,40 @@ function clearDetectedItems() {
     updateVisionPrompt();
 }
 
+// ===== SAVED PRODUCTS (localStorage) =====
+function getSavedProducts() {
+    try {
+        const saved = localStorage.getItem('savedProducts');
+        return saved ? JSON.parse(saved) : [];
+    } catch (error) {
+        console.error('Error loading saved products:', error);
+        return [];
+    }
+}
+
+function saveProduct(product) {
+    const saved = getSavedProducts();
+    // Check if already saved using normalizedKey
+    const exists = saved.find(p => p.normalizedKey === product.normalizedKey);
+    if (!exists) {
+        saved.push(product);
+        localStorage.setItem('savedProducts', JSON.stringify(saved));
+        console.log('Product saved:', product.itemName);
+    }
+}
+
+function unsaveProduct(normalizedKey) {
+    const saved = getSavedProducts();
+    const filtered = saved.filter(p => p.normalizedKey !== normalizedKey);
+    localStorage.setItem('savedProducts', JSON.stringify(filtered));
+    console.log('Product unsaved:', normalizedKey);
+}
+
+function isProductSaved(normalizedKey) {
+    const saved = getSavedProducts();
+    return saved.some(p => p.normalizedKey === normalizedKey);
+}
+
 // Normalize item description to create a stable key
 function normalizeItemKey(item) {
     // Create a stable key from the clothing type and color
@@ -218,8 +252,30 @@ function displayProducts(products) {
                 </div>
             `;
         } else if (product.url) {
+            // Debug: Check if image_url exists
+            console.log('Product data:', product);
+            console.log('Image URL:', product.image_url);
+
+            const imageHtml = product.image_url
+                ? `<img class="product-image" src="${product.image_url}" alt="${product.itemName}" onerror="this.style.display='none'" />`
+                : `<div class="product-image product-placeholder">
+                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2">
+                       <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                       <circle cx="8.5" cy="8.5" r="1.5"/>
+                       <polyline points="21 15 16 10 5 21"/>
+                     </svg>
+                   </div>`;
+
+            const isSaved = isProductSaved(product.normalizedKey);
+            const saveIconClass = isSaved ? 'saved' : '';
+
             productCard.innerHTML = `
-                ${product.image_url ? `<img class="product-image" src="${product.image_url}" alt="${product.itemName}" />` : ''}
+                <button class="save-btn ${saveIconClass}" data-key="${product.normalizedKey}">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${isSaved ? '#ff3b5c' : 'none'}" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                </button>
+                ${imageHtml}
                 <div class="product-info">
                     <div class="product-name">${product.itemName || 'Product'}</div>
                     ${product.name ? `<div class="product-title">${product.name}</div>` : ''}
@@ -242,6 +298,134 @@ function displayProducts(products) {
             const url = btn.getAttribute('data-url');
             if (url) {
                 window.open(url, '_blank');
+            }
+        };
+    });
+
+    // Add click handlers for save buttons
+    productsContainer.querySelectorAll('.save-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const normalizedKey = btn.getAttribute('data-key');
+            const product = products.find(p => p.normalizedKey === normalizedKey);
+
+            if (btn.classList.contains('saved')) {
+                // Unsave
+                btn.classList.remove('saved');
+                btn.querySelector('svg').setAttribute('fill', 'none');
+                unsaveProduct(normalizedKey);
+            } else {
+                // Save
+                btn.classList.add('saved');
+                btn.querySelector('svg').setAttribute('fill', '#ff3b5c');
+                if (product) {
+                    saveProduct(product);
+                }
+            }
+
+            // Refresh saved page if it's visible
+            if (!document.getElementById('saved-page').style.display ||
+                document.getElementById('saved-page').style.display !== 'none') {
+                displaySavedProducts();
+            }
+        };
+    });
+}
+
+// Function to display saved products on the Saved page
+function displaySavedProducts() {
+    console.log('=== DISPLAY SAVED PRODUCTS ===');
+    const savedProductsContainer = document.getElementById('saved-products');
+
+    if (!savedProductsContainer) {
+        console.error('ERROR: Saved products container not found in DOM!');
+        return;
+    }
+
+    const savedProducts = getSavedProducts();
+    console.log('Saved products count:', savedProducts.length);
+
+    savedProductsContainer.innerHTML = '';
+
+    if (savedProducts.length === 0) {
+        savedProductsContainer.innerHTML = `
+            <div class="no-saved-products">
+                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                </svg>
+                <h3>No saved products yet</h3>
+                <p>Products you save will appear here</p>
+            </div>
+        `;
+        return;
+    }
+
+    savedProducts.forEach((product, index) => {
+        console.log(`Processing saved product ${index}:`, product);
+
+        const productCard = document.createElement('div');
+        productCard.className = 'product-card';
+
+        if (product.url) {
+            const imageHtml = product.image_url
+                ? `<img class="product-image" src="${product.image_url}" alt="${product.itemName}" onerror="this.style.display='none'" />`
+                : `<div class="product-image product-placeholder">
+                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2">
+                       <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
+                       <circle cx="8.5" cy="8.5" r="1.5"/>
+                       <polyline points="21 15 16 10 5 21"/>
+                     </svg>
+                   </div>`;
+
+            productCard.innerHTML = `
+                <button class="save-btn saved" data-key="${product.normalizedKey}">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="#ff3b5c" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path>
+                    </svg>
+                </button>
+                ${imageHtml}
+                <div class="product-info">
+                    <div class="product-name">${product.itemName || 'Product'}</div>
+                    ${product.name ? `<div class="product-title">${product.name}</div>` : ''}
+                    ${product.price ? `<div class="product-price">${product.price}</div>` : ''}
+                </div>
+                <button class="shop-btn" data-url="${product.url}">Shop Now →</button>
+            `;
+        }
+
+        savedProductsContainer.appendChild(productCard);
+    });
+
+    // Add click handlers for shop buttons
+    savedProductsContainer.querySelectorAll('.shop-btn').forEach(btn => {
+        btn.onclick = () => {
+            const url = btn.getAttribute('data-url');
+            if (url) {
+                window.open(url, '_blank');
+            }
+        };
+    });
+
+    // Add click handlers for save buttons (unsave)
+    savedProductsContainer.querySelectorAll('.save-btn').forEach(btn => {
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            const normalizedKey = btn.getAttribute('data-key');
+
+            // Unsave
+            unsaveProduct(normalizedKey);
+
+            // Refresh the saved products page
+            displaySavedProducts();
+
+            // Update the vision page if needed
+            const visionProducts = document.getElementById('products');
+            if (visionProducts) {
+                const visionSaveBtn = visionProducts.querySelector(`[data-key="${normalizedKey}"]`);
+                if (visionSaveBtn) {
+                    visionSaveBtn.classList.remove('saved');
+                    visionSaveBtn.querySelector('svg').setAttribute('fill', 'none');
+                }
             }
         };
     });
@@ -472,6 +656,34 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Load cameras on page load
     await loadCameras();
 
+    // Add dropdown arrow rotation functionality
+    const cameraSelect = document.getElementById('camera-select');
+    const selectWrapper = cameraSelect.parentElement;
+
+    let isOpen = false;
+
+    cameraSelect.addEventListener('focus', () => {
+        isOpen = true;
+        selectWrapper.classList.add('open');
+    });
+
+    cameraSelect.addEventListener('blur', () => {
+        isOpen = false;
+        setTimeout(() => {
+            if (!isOpen) {
+                selectWrapper.classList.remove('open');
+            }
+        }, 100);
+    });
+
+    cameraSelect.addEventListener('click', () => {
+        if (selectWrapper.classList.contains('open')) {
+            selectWrapper.classList.remove('open');
+        } else {
+            selectWrapper.classList.add('open');
+        }
+    });
+
     async function startVisionWithCamera() {
         const select = document.getElementById('camera-select');
         const deviceId = select.value;
@@ -565,7 +777,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     document.getElementById('find-btn').onclick = () => {
         console.log('Find Clothes clicked - starting detection...');
-        
+
         // Reset state for fresh detection
         document.getElementById('results').innerText = 'Detecting clothing...';
         document.getElementById('products').innerHTML = '';
@@ -574,7 +786,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         clearDetectedItems();
         hasStopped = false;
         findClothesClickCount = 0;
-        
+
         // Start detection immediately
         startVisionWithCamera();
     };
@@ -626,4 +838,19 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('results').innerText = 'Error starting camera: ' + err.message;
         }
     };
+
+    // ===== PAGE NAVIGATION LOGIC =====
+    const navItems = document.querySelectorAll('.nav-item');
+
+    navItems.forEach(navItem => {
+        navItem.addEventListener('click', () => {
+            const targetPage = navItem.getAttribute('data-page');
+
+            // Navigate to the target page if it's different from current
+            if (targetPage && targetPage !== 'sidepanel.html') {
+                window.location.href = targetPage;
+            }
+        });
+    });
 });
+
