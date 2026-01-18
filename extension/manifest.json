@@ -15,7 +15,9 @@
         {
             "matches": [
                 "https://www.google.com/search*",
-                "https://shopping.google.com/*"
+                "https://shopping.google.com/*",
+                "https://www.youtube.com/*",
+                "https://youtube.com/*"
             ],
             "js": ["content.js"],
             "run_at": "document_idle"
@@ -39,12 +41,5 @@
         "16": "icons/icon16.png",
         "48": "icons/icon48.png",
         "128": "icons/icon128.png"
-    },
-    "content_scripts": [
-        {
-            "matches": ["https://www.youtube.com/*", "https://youtube.com/*"],
-            "js": ["content.js"],
-            "run_at": "document_idle"
-        }
-    ]
+    }
 }
