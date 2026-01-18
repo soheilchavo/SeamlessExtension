@@ -619,4 +619,109 @@ document.addEventListener('DOMContentLoaded', async () => {
             document.getElementById('results').innerText = 'Error starting camera: ' + err.message;
         }
     };
+
+    // Click-to-trigger: User clicks on video to detect and search
+    document.getElementById('preview').onclick = async () => {
+        const video = document.getElementById('preview');
+
+        // Make sure camera is running
+        if (!video.srcObject) {
+            document.getElementById('results').innerText = 'Please start the camera first!';
+            return;
+        }
+
+        // Prevent multiple simultaneous detections
+        if (vision) {
+            console.log('Detection already in progress...');
+            return;
+        }
+
+        console.log('Video clicked - starting quick detection...');
+        document.getElementById('results').innerText = '🔍 Analyzing what you clicked...';
+        document.getElementById('products').innerHTML = '<div class="loading">🔍 Detecting clothing...</div>';
+        hasStopped = false;
+
+        vision = new RealtimeVision({
+            apiUrl: 'https://cluster1.overshoot.ai/api/v0.2',
+            apiKey: API_KEY,
+            prompt: 'Identify the main clothing item visible in the center of the image. Provide a specific product description optimized for shopping searches. Include: color(s), pattern/style, fit/type, sleeve length if applicable. Be concise. Example: "navy blue slim fit t-shirt". Return ONLY the item description, nothing else.',
+            source: { type: 'camera', cameraFacing: 'user' },
+            processing: {
+                clip_length_seconds: 3,   // Short capture
+                delay_seconds: 1,          // Minimal delay
+                fps: 10,
+                sampling_ratio: 0.1
+            },
+            onResult: async (result) => {
+                if (hasStopped) return;
+                hasStopped = true;
+
+                console.log('Quick detection result:', result);
+
+                let textResult = '';
+                if (typeof result === 'string') {
+                    textResult = result;
+                } else if (result.result) {
+                    textResult = typeof result.result === 'string' ? result.result : JSON.stringify(result.result);
+                }
+
+                console.log('Detected item:', textResult);
+
+                // Stop vision immediately
+                try {
+                    await vision.stop();
+                    vision = null;
+                } catch (e) {
+                    console.warn('Stop failed:', e);
+                }
+
+                if (!textResult || textResult.toLowerCase().includes('none') || textResult.toLowerCase().includes('no clothing')) {
+                    document.getElementById('results').innerText = 'No clothing detected. Try clicking again.';
+                    document.getElementById('products').innerHTML = '';
+                    return;
+                }
+
+                document.getElementById('results').innerText = 'Found: ' + textResult;
+
+                // Search for the detected item
+                const items = textResult.split(/[,\n]/).map(s => s.trim()).filter(s => s.length > 0);
+                if (items.length > 0) {
+                    await processNLPItems([items[0]]); // Just search for the main item
+                }
+            },
+            onError: (err) => {
+                console.error('Quick detection error:', err);
+                document.getElementById('results').innerText = 'Detection error: ' + (err.message || JSON.stringify(err));
+                vision = null;
+            }
+        });
+
+        await vision.start();
+        console.log('Quick detection started');
+    };
+
+    // ===== YOUTUBE CLICK TRIGGER =====
+    // Listen for click triggers from YouTube content script
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.type === 'TRIGGER_FIND_CLOTHES') {
+            console.log('=== YOUTUBE CLICK - TRIGGERING FIND CLOTHES ===');
+            console.log('User clicked at:', message.data.clickX, message.data.clickY);
+
+            // Show that we received the trigger
+            document.getElementById('results').innerText = '📍 YouTube click received! Starting detection...';
+
+            // Check if camera is selected
+            const select = document.getElementById('camera-select');
+            if (!select.value) {
+                document.getElementById('results').innerText = '⚠️ Please select OBS Virtual Camera first!';
+                sendResponse({ received: true, error: 'no camera selected' });
+                return true;
+            }
+
+            // Trigger the Find Clothes button
+            document.getElementById('find-btn').click();
+            sendResponse({ received: true });
+        }
+        return true;
+    });
 });

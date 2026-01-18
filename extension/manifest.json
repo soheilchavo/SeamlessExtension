@@ -4,7 +4,14 @@
     "version": "1.0.0",
     "description": "Detect and identify clothing items using AI-powered real-time vision",
     "permissions": [
-        "sidePanel"
+        "sidePanel",
+        "activeTab",
+        "tabCapture"
+    ],
+    "host_permissions": [
+        "https://www.youtube.com/*",
+        "https://youtube.com/*",
+        "https://generativelanguage.googleapis.com/*"
     ],
     "side_panel": {
         "default_path": "sidepanel.html"
@@ -12,6 +19,13 @@
     "background": {
         "service_worker": "background.js"
     },
+    "content_scripts": [
+        {
+            "matches": ["https://www.youtube.com/*", "https://youtube.com/*"],
+            "js": ["content.js"],
+            "run_at": "document_idle"
+        }
+    ],
     "action": {
         "default_title": "Open Seamless",
         "default_icon": {
