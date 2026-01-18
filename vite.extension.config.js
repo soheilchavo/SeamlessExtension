@@ -5,15 +5,15 @@ import { resolve } from 'path';
 export default defineConfig({
     build: {
         outDir: 'extension/dist',
-        lib: {
-            entry: resolve(__dirname, 'extension/sidepanel.js'),
-            name: 'SeamlessSidepanel',
-            fileName: 'sidepanel.bundle',
-            formats: ['es']
-        },
         rollupOptions: {
+            input: {
+                sidepanel: resolve(__dirname, 'extension/sidepanel.js'),
+                saved: resolve(__dirname, 'extension/saved.js'),
+                profile: resolve(__dirname, 'extension/profile.js')
+            },
             output: {
-                entryFileNames: 'sidepanel.bundle.js'
+                entryFileNames: '[name].bundle.js',
+                format: 'es'
             }
         }
     }
