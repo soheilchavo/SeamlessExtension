@@ -5,6 +5,11 @@ const RAILWAY_URL = 'https://web-production-a1e61a.up.railway.app/get-product';
 
 console.log('Seamless extension loaded');
 
+// Wake up Railway on load so it's ready when needed
+fetch(RAILWAY_URL, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+    .then(() => console.log('Railway warmed up'))
+    .catch(() => console.log('Railway wake-up ping sent'));
+
 let latestClothingData = null;
 let vision = null;
 let findClothesClickCount = 0;  // Track clicks to toggle behavior
@@ -38,7 +43,7 @@ function buildPrompt() {
 
 // Update the running vision with new prompt
 function updateVisionPrompt() {
-    if (!vision) return;
+    if (!vision || hasStopped) return;
 
     const newPrompt = buildPrompt();
     console.log('Updating prompt with exclusions:', detectedItems.length);
@@ -47,7 +52,8 @@ function updateVisionPrompt() {
     try {
         vision.updatePrompt(newPrompt);
     } catch (e) {
-        console.error('Failed to update prompt:', e);
+        // Ignore errors when vision is not in a valid state
+        console.log('Prompt update skipped (vision not ready)');
     }
 }
 
@@ -254,10 +260,20 @@ function displayProducts(products) {
         } else if (product.url) {
             // Debug: Check if image_url exists
             console.log('Product data:', product);
-            console.log('Image URL:', product.image_url);
+            console.log('Available image properties:', {
+                image_url: product.image_url,
+                imageUrl: product.imageUrl,
+                image: product.image,
+                img: product.img,
+                photo: product.photo
+            });
 
-            const imageHtml = product.image_url
-                ? `<img class="product-image" src="${product.image_url}" alt="${product.itemName}" onerror="this.style.display='none'" />`
+            // Try multiple possible property names for image
+            const imageUrl = product.image_url || product.imageUrl || product.image || product.img || product.photo;
+            console.log('Resolved image URL:', imageUrl);
+
+            const imageHtml = imageUrl
+                ? `<img class="product-image" src="${imageUrl}" alt="${product.itemName}" onerror="this.style.display='none'" />`
                 : `<div class="product-image product-placeholder">
                      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ccc" stroke-width="2">
                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"/>
@@ -691,10 +707,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             prompt: buildPrompt(),  // Uses dynamic prompt with exclusions
             source: { type: 'camera', cameraFacing: 'user' },
             processing: {
-                clip_length_seconds: 10,
-                delay_seconds: 5,
+                clip_length_seconds: 5,
+                delay_seconds: 2,
                 fps: 10,
-                sampling_ratio: 0.1
+                sampling_ratio: 0.2
             },
             onResult: async (result) => {
                 // Prevent multiple UI updates and multiple stop calls
@@ -733,6 +749,31 @@ document.addEventListener('DOMContentLoaded', async () => {
                     if (items.length > 0) {
                         try {
                             await processNLPItems(items);
+                            
+                            // Send full product data to content script immediately after processing
+                            const productsList = [...foundProducts.values()].map(p => ({
+                                ...p,
+                                // Normalize image_url - try multiple property names
+                                image_url: p.image_url || p.imageUrl || p.image || p.img || p.photo || null
+                            }));
+                            console.log('Sending products to content script:', productsList);
+                            console.log('Product details:', productsList.map(p => ({
+                                itemName: p.itemName,
+                                image_url: p.image_url,
+                                url: p.url,
+                                all_keys: Object.keys(p)
+                            })));
+                            
+                            chrome.tabs.query({active: true, currentWindow: true}, (tabs) => {
+                                if (tabs[0]) {
+                                    chrome.tabs.sendMessage(tabs[0].id, {
+                                        type: 'CLOTHING_RESULTS',
+                                        results: productsList
+                                    }).catch((err) => {
+                                        console.log('Could not send results to content script:', err);
+                                    });
+                                }
+                            });
                         } catch (error) {
                             console.error('Error processing NLP items:', error);
                             document.getElementById('results').innerText = 'Error processing items: ' + error.message;
@@ -761,6 +802,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             onError: (err) => {
                 console.error('Vision error:', err);
                 document.getElementById('results').innerText = 'An error occurred: ' + (err.message || JSON.stringify(err));
+            },
+            onFrame: (frame) => {
+                console.log('Frame captured:', frame ? 'yes' : 'no');
             }
         });
 
@@ -844,6 +888,44 @@ document.addEventListener('DOMContentLoaded', async () => {
                 window.location.href = targetPage;
             }
         });
+    });
+
+    // Listen for TRIGGER_FIND_CLOTHES messages from content script
+    chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+        if (message.type === 'TRIGGER_FIND_CLOTHES') {
+            document.getElementById('find-btn').click();
+            sendResponse({ received: true });
+        }
+        
+        if (message.type === 'AUTO_START_CAMERA') {
+            // Auto-start the camera when sidepanel is opened from toggle
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                startBtn.click();
+                console.log('Auto-starting camera from click');
+            }
+            sendResponse({ received: true });
+        }
+        
+        if (message.type === 'AUTO_START_CAMERA_AND_SEARCH') {
+            // Auto-start camera and then trigger search after a delay
+            const startBtn = document.getElementById('start-btn');
+            if (startBtn) {
+                startBtn.click();
+                console.log('Auto-starting camera and search');
+                
+                // Wait a bit for camera to initialize, then trigger search
+                setTimeout(() => {
+                    const findBtn = document.getElementById('find-btn');
+                    if (findBtn) {
+                        findBtn.click();
+                        console.log('Auto-triggered find clothes');
+                    }
+                }, 1500);
+            }
+            sendResponse({ received: true });
+        }
+        return true;
     });
 });
 
