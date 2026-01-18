@@ -7,6 +7,8 @@ console.log('Seamless extension loaded');
 
 let latestClothingData = null;
 let vision = null;
+let findClothesClickCount = 0;  // Track clicks to toggle behavior
+let hasStopped = false;  // Simple flag: has the current session already stopped?
 
 // ===== PERSISTENCE LAYER =====
 // Cache for API responses to avoid duplicate requests
@@ -23,8 +25,7 @@ const pendingSearches = new Set();
 const detectedItems = [];
 
 // Base prompt template
-const BASE_PROMPT = 'List all clothing items you see. For each item, describe it with as many parameters as it would take to recreate it with an image search, for example "stripped black and yellow short sleeve t-shirt for men" or "levis low taper navy blue jeans for women". Separate items with commas.';
-
+const BASE_PROMPT = `Identify and list ONLY clothing items visible in the image. For each item, provide a specific product description optimized for shopping searches. Include: color(s), pattern/style (striped, solid, graphic, etc.), fit/type (slim, oversized, crop, etc.), sleeve length, visible material hints, and target gender/fit if obvious. Be concise but specific. Examples: "navy blue slim fit t-shirt", "black high-waisted skinny jeans", "white oversized linen button-up shirt", "burgundy wool cardigan with buttons". Ignore accessories, background, and non-clothing items. Separate items with commas only.`;
 // Build the prompt with exclusions
 function buildPrompt() {
     if (detectedItems.length === 0) {
@@ -495,7 +496,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 fps: 10,
                 sampling_ratio: 0.1
             },
-            onResult: (result) => {
+            onResult: async (result) => {
+                // Prevent multiple UI updates and multiple stop calls
+                if (hasStopped) return;
+                hasStopped = true;
+
                 console.log('Got NLP result:', result);
 
                 // Extract the text response
@@ -515,19 +520,30 @@ document.addEventListener('DOMContentLoaded', async () => {
                 if (textResult.toLowerCase().includes('none') ||
                     textResult.toLowerCase().includes('no clothing')) {
                     console.log('No clothing detected');
-                    return;
+                    document.getElementById('results').innerText = 'No clothing detected. Click Find Clothes to try again.';
+                } else {
+                    // Parse comma-separated items and search for each
+                    const items = textResult
+                        .split(/[,\n]/)
+                        .map(s => s.trim())
+                        .filter(s => s.length > 0 && s.toLowerCase() !== 'none');
+
+                    console.log('Parsed items:', items);
+
+                    if (items.length > 0) {
+                        processNLPItems(items);
+                    }
+
+                    document.getElementById('results').innerText = textResult + '\n\nDetection complete.';
                 }
 
-                // Parse comma-separated items and search for each
-                const items = textResult
-                    .split(/[,\n]/)
-                    .map(s => s.trim())
-                    .filter(s => s.length > 0 && s.toLowerCase() !== 'none');
-
-                console.log('Parsed items:', items);
-
-                if (items.length > 0) {
-                    processNLPItems(items);
+                // Stop immediately so it does not keep fluctuating
+                try {
+                    console.log('Stopping Overshoot after first result...');
+                    await vision.stop();
+                    console.log('Vision stopped successfully');
+                } catch (e) {
+                    console.warn('Stop failed:', e);
                 }
             },
             onMessage: (message) => {
@@ -548,7 +564,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     document.getElementById('find-btn').onclick = () => {
+        console.log('Find Clothes clicked - starting detection...');
+        
+        // Reset state for fresh detection
         document.getElementById('results').innerText = 'Detecting clothing...';
+        document.getElementById('products').innerHTML = '';
+        foundProducts.clear();
+        productCache.clear();
+        clearDetectedItems();
+        hasStopped = false;
+        findClothesClickCount = 0;
+        
+        // Start detection immediately
         startVisionWithCamera();
     };
 
@@ -568,8 +595,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     document.getElementById('stop-btn').onclick = async () => {
         if (vision) {
             console.log('Stopping Overshoot vision...');
+            hasStopped = true;
             await vision.stop();
             vision = null;
+            findClothesClickCount = 0;  // Reset click count
             document.getElementById('results').innerText = 'Detection stopped.';
             console.log('Vision stopped.');
         }

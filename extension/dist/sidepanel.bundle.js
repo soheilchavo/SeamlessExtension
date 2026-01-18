@@ -2,27 +2,27 @@ var m = class extends Error {
   constructor(e, t, n, o) {
     super(e), this.name = "ApiError", this.statusCode = t, this.requestId = n, this.details = o;
   }
-}, k = class extends m {
+}, N = class extends m {
   constructor(e, t) {
     super(e, 401, t), this.name = "UnauthorizedError";
   }
-}, _ = class extends m {
+}, P = class extends m {
   constructor(e, t, n) {
     super(e, 422, t, n), this.name = "ValidationError";
   }
-}, P = class extends m {
+}, T = class extends m {
   constructor(e, t) {
     super(e, 404, t), this.name = "NotFoundError";
   }
-}, v = class extends m {
+}, b = class extends m {
   constructor(e, t) {
     super(e), this.name = "NetworkError", this.cause = t;
   }
-}, N = class extends m {
+}, R = class extends m {
   constructor(e, t, n) {
     super(e, 500, t, n), this.name = "ServerError";
   }
-}, T = class {
+}, A = class {
   constructor(e) {
     if (!e.apiKey || typeof e.apiKey != "string")
       throw new Error("apiKey is required and must be a string");
@@ -46,14 +46,14 @@ var m = class extends Error {
           error: "unknown_error",
           message: r.statusText
         })), i = s.message || s.error;
-        throw r.status === 401 ? new k(
+        throw r.status === 401 ? new N(
           i || "Invalid or revoked API key",
           s.request_id
-        ) : r.status === 422 || r.status === 400 ? new _(
+        ) : r.status === 422 || r.status === 400 ? new P(
           i,
           s.request_id,
           s.details
-        ) : r.status === 404 ? new P(i, s.request_id) : r.status >= 500 ? new N(
+        ) : r.status === 404 ? new T(i, s.request_id) : r.status >= 500 ? new R(
           i,
           s.request_id,
           s.details
@@ -66,7 +66,7 @@ var m = class extends Error {
       }
       return await r.json();
     } catch (r) {
-      throw r instanceof m ? r : r instanceof Error ? new v(`Network error: ${r.message}`, r) : new v("Unknown network error");
+      throw r instanceof m ? r : r instanceof Error ? new b(`Network error: ${r.message}`, r) : new b("Unknown network error");
     }
   }
   async createStream(e) {
@@ -135,7 +135,7 @@ var m = class extends Error {
   CLIP_LENGTH_SECONDS: { min: 0.1, max: 60 },
   DELAY_SECONDS: { min: 0, max: 60 },
   RATING: { min: 1, max: 5 }
-}, R = class {
+}, F = class {
   constructor(e = !1) {
     this.debugEnabled = e;
   }
@@ -155,9 +155,9 @@ var m = class extends Error {
   constructor(e) {
     super(e), this.name = "ValidationError";
   }
-}, A = class {
+}, O = class {
   constructor(e) {
-    this.mediaStream = null, this.peerConnection = null, this.webSocket = null, this.streamId = null, this.keepaliveInterval = null, this.videoElement = null, this.isRunning = !1, this.validateConfig(e), this.config = e, this.logger = new R(e.debug ?? !1), this.client = new T({
+    this.mediaStream = null, this.peerConnection = null, this.webSocket = null, this.streamId = null, this.keepaliveInterval = null, this.videoElement = null, this.isRunning = !1, this.validateConfig(e), this.config = e, this.logger = new F(e.debug ?? !1), this.client = new A({
       baseUrl: e.apiUrl,
       apiKey: e.apiKey
     });
@@ -230,8 +230,8 @@ var m = class extends Error {
           }, 1e4);
           t.onloadedmetadata = () => {
             clearTimeout(i), this.logger.debug("Video metadata loaded"), r();
-          }, t.onerror = (u) => {
-            clearTimeout(i), this.logger.error("Video loading error:", u), s(new Error("Failed to load video file"));
+          }, t.onerror = (g) => {
+            clearTimeout(i), this.logger.error("Video loading error:", g), s(new Error("Failed to load video file"));
           }, t.readyState >= 1 && (clearTimeout(i), r());
         }), await t.play(), this.logger.debug("Video playback started");
         const n = t.captureStream();
@@ -463,54 +463,54 @@ var m = class extends Error {
     this.logger.debug("Cleaning up resources"), this.keepaliveInterval && (window.clearInterval(this.keepaliveInterval), this.keepaliveInterval = null), this.webSocket && (this.webSocket.close(), this.webSocket = null), this.peerConnection && (this.peerConnection.close(), this.peerConnection = null), this.mediaStream && (this.mediaStream.getTracks().forEach((e) => e.stop()), this.mediaStream = null), this.videoElement && (this.videoElement.pause(), URL.revokeObjectURL(this.videoElement.src), this.videoElement.remove(), this.videoElement = null), this.streamId = null, this.logger.debug("Cleanup complete");
   }
 };
-const F = "ovs_148da6c73eff6fdde6431e7bc82e0dd8", b = "https://web-production-a1e61a.up.railway.app/get-product";
+const D = "ovs_148da6c73eff6fdde6431e7bc82e0dd8", C = "https://web-production-a1e61a.up.railway.app/get-product";
 console.log("Seamless extension loaded");
-let g = null;
-const S = /* @__PURE__ */ new Map(), d = /* @__PURE__ */ new Map(), p = /* @__PURE__ */ new Set(), h = [], C = 'List all clothing items you see. For each item, describe it with as many parameters as it would take to recreate it with an image search, for example "stripped black and yellow short sleeve t-shirt for men" or "levis low taper navy blue jeans for women". Separate items with commas.';
-function I() {
-  if (h.length === 0)
-    return C;
-  const e = h.map((t) => `"${t}"`).join(", ");
-  return `${C} Do NOT list any items similar to these already detected items: [${e}]`;
-}
+let u = null, p = !1;
+const w = /* @__PURE__ */ new Map(), d = /* @__PURE__ */ new Map(), f = /* @__PURE__ */ new Set(), h = [], I = 'Identify and list ONLY clothing items visible in the image. For each item, provide a specific product description optimized for shopping searches. Include: color(s), pattern/style (striped, solid, graphic, etc.), fit/type (slim, oversized, crop, etc.), sleeve length, visible material hints, and target gender/fit if obvious. Be concise but specific. Examples: "navy blue slim fit t-shirt", "black high-waisted skinny jeans", "white oversized linen button-up shirt", "burgundy wool cardigan with buttons". Ignore accessories, background, and non-clothing items. Separate items with commas only.';
 function L() {
-  if (!g) return;
-  const e = I();
+  if (h.length === 0)
+    return I;
+  const e = h.map((t) => `"${t}"`).join(", ");
+  return `${I} Do NOT list any items similar to these already detected items: [${e}]`;
+}
+function _() {
+  if (!u) return;
+  const e = L();
   console.log("Updating prompt with exclusions:", h.length), console.log("New prompt:", e);
   try {
-    g.updatePrompt(e);
+    u.updatePrompt(e);
   } catch (t) {
     console.error("Failed to update prompt:", t);
   }
 }
-function O(e) {
+function x(e) {
   const t = e.toLowerCase().trim();
   return h.some((o) => {
     const r = o.toLowerCase(), s = new Set(t.split(/\s+/)), i = new Set(r.split(/\s+/));
-    return [...s].filter((y) => i.has(y)).length / Math.max(s.size, i.size) > 0.7;
-  }) ? (console.log("Item already detected (similar):", e), !1) : (console.log("Adding new detected item:", e), h.push(e), L(), !0);
+    return [...s].filter((v) => i.has(v)).length / Math.max(s.size, i.size) > 0.7;
+  }) ? (console.log("Item already detected (similar):", e), !1) : (console.log("Adding new detected item:", e), h.push(e), _(), !0);
 }
-function D() {
-  h.length = 0, console.log("Cleared all detected items"), L();
+function k() {
+  h.length = 0, console.log("Cleared all detected items"), _();
 }
-function x(e, t) {
-  const n = (f) => f.toLowerCase().replace(/[^a-z0-9]/g, ""), o = n(e), r = n(t);
+function $(e, t) {
+  const n = (S) => S.toLowerCase().replace(/[^a-z0-9]/g, ""), o = n(e), r = n(t);
   if (o.includes(r) || r.includes(o)) return !0;
-  const s = new Set(e.toLowerCase().split(/\s+/)), i = new Set(t.toLowerCase().split(/\s+/)), u = [...s].filter((f) => i.has(f)), E = /* @__PURE__ */ new Set([...s, ...i]);
-  return u.length / E.size > 0.6;
+  const s = new Set(e.toLowerCase().split(/\s+/)), i = new Set(t.toLowerCase().split(/\s+/)), g = [...s].filter((S) => i.has(S)), E = /* @__PURE__ */ new Set([...s, ...i]);
+  return g.length / E.size > 0.6;
 }
-function $(e) {
-  for (const [t, n] of S.entries())
-    if (x(e, t))
+function B(e) {
+  for (const [t, n] of w.entries())
+    if ($(e, t))
       return console.log(`Found similar cached item: "${t}" for "${e}"`), n;
   return null;
 }
-async function U(e) {
-  console.log("=== SEARCH PRODUCT START ==="), console.log("Item name:", e), console.log("Railway URL:", b);
+async function M(e) {
+  console.log("=== SEARCH PRODUCT START ==="), console.log("Item name:", e), console.log("Railway URL:", C);
   try {
     const t = JSON.stringify({ item_name: e });
     console.log("Request body:", t), console.log("Sending fetch request...");
-    const n = await fetch(b, {
+    const n = await fetch(C, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: t
@@ -529,7 +529,7 @@ async function U(e) {
     return console.error("=== SEARCH PRODUCT ERROR ==="), console.error("Error type:", t.name), console.error("Error message:", t.message), console.error("Full error:", t), { error: t.message };
   }
 }
-function w(e) {
+function y(e) {
   console.log("=== DISPLAY PRODUCTS ==="), console.log("Products to display:", e), console.log("Products count:", e?.length);
   const t = document.getElementById("products");
   if (console.log("Products container found:", !!t), console.log("Products container element:", t), !t) {
@@ -570,38 +570,38 @@ function w(e) {
     };
   });
 }
-async function M(e) {
+async function U(e) {
   console.log("=== PROCESS NLP ITEMS START ==="), console.log("Item descriptions:", e), console.log("Current detected items:", h.length), console.log("Current found products:", d.size);
   const t = document.getElementById("products"), n = [];
   for (const o of e) {
     const r = o.trim();
-    !r || r.toLowerCase() === "none" || O(r) && n.push(r);
+    !r || r.toLowerCase() === "none" || x(r) && n.push(r);
   }
   console.log("New items to search:", n);
   for (const o of n) {
     const r = o.toLowerCase().replace(/[^a-z0-9]/g, "-");
-    if (d.has(r) || p.has(r)) {
+    if (d.has(r) || f.has(r)) {
       console.log(`Skipping already processed: ${r}`);
       continue;
     }
-    const s = $(o);
+    const s = B(o);
     if (s) {
       console.log("Using cached result for:", o), d.set(r, {
         itemName: o,
         normalizedKey: r,
         ...s,
         fromCache: !0
-      }), w([...d.values()]);
+      }), y([...d.values()]);
       continue;
     }
-    if (p.add(r), d.size > 0) {
+    if (f.add(r), d.size > 0) {
       const i = [...d.values()];
-      i.push({ itemName: o, loading: !0 }), w(i);
+      i.push({ itemName: o, loading: !0 }), y(i);
     } else
       t.innerHTML = '<div class="loading">🔍 Searching for products...</div>';
     try {
-      const i = await U(o);
-      console.log("Search result for", o, ":", i), S.set(o, i), d.set(r, {
+      const i = await M(o);
+      console.log("Search result for", o, ":", i), w.set(o, i), d.set(r, {
         itemName: o,
         normalizedKey: r,
         ...i
@@ -613,10 +613,10 @@ async function M(e) {
         error: i.message
       });
     } finally {
-      p.delete(r);
+      f.delete(r);
     }
   }
-  d.size > 0 && (console.log("Displaying all found products:", d.size), w([...d.values()])), console.log("=== PROCESS NLP ITEMS END ===");
+  d.size > 0 && (console.log("Displaying all found products:", d.size), y([...d.values()])), console.log("=== PROCESS NLP ITEMS END ===");
 }
 document.addEventListener("DOMContentLoaded", async () => {
   async function e() {
@@ -631,10 +631,10 @@ document.addEventListener("DOMContentLoaded", async () => {
       document.getElementById("results").innerText = "Please select a camera first!";
       return;
     }
-    g && await g.stop(), g = new A({
+    u && await u.stop(), u = new O({
       apiUrl: "https://cluster1.overshoot.ai/api/v0.2",
-      apiKey: F,
-      prompt: I(),
+      apiKey: D,
+      prompt: L(),
       // Uses dynamic prompt with exclusions
       source: { type: "camera", cameraFacing: "user" },
       processing: {
@@ -643,15 +643,23 @@ document.addEventListener("DOMContentLoaded", async () => {
         fps: 10,
         sampling_ratio: 0.1
       },
-      onResult: (r) => {
-        console.log("Got NLP result:", r);
+      onResult: async (r) => {
+        if (p) return;
+        p = !0, console.log("Got NLP result:", r);
         let s = "";
-        if (typeof r == "string" ? s = r : r.result ? s = typeof r.result == "string" ? r.result : JSON.stringify(r.result) : s = JSON.stringify(r), console.log("Text result:", s), document.getElementById("results").innerText = s, s.toLowerCase().includes("none") || s.toLowerCase().includes("no clothing")) {
-          console.log("No clothing detected");
-          return;
+        if (typeof r == "string" ? s = r : r.result ? s = typeof r.result == "string" ? r.result : JSON.stringify(r.result) : s = JSON.stringify(r), console.log("Text result:", s), document.getElementById("results").innerText = s, s.toLowerCase().includes("none") || s.toLowerCase().includes("no clothing"))
+          console.log("No clothing detected"), document.getElementById("results").innerText = "No clothing detected. Click Find Clothes to try again.";
+        else {
+          const i = s.split(/[,\n]/).map((g) => g.trim()).filter((g) => g.length > 0 && g.toLowerCase() !== "none");
+          console.log("Parsed items:", i), i.length > 0 && U(i), document.getElementById("results").innerText = s + `
+
+Detection complete.`;
         }
-        const i = s.split(/[,\n]/).map((u) => u.trim()).filter((u) => u.length > 0 && u.toLowerCase() !== "none");
-        console.log("Parsed items:", i), i.length > 0 && M(i);
+        try {
+          console.log("Stopping Overshoot after first result..."), await u.stop(), console.log("Vision stopped successfully");
+        } catch (i) {
+          console.warn("Stop failed:", i);
+        }
       },
       onMessage: (r) => {
         console.log("Got message:", r);
@@ -662,14 +670,14 @@ document.addEventListener("DOMContentLoaded", async () => {
       onError: (r) => {
         console.error("Vision error:", r), document.getElementById("results").innerText = "An error occurred: " + (r.message || JSON.stringify(r));
       }
-    }), await g.start(), console.log("Vision started with camera.");
+    }), await u.start(), console.log("Vision started with camera.");
   }
   document.getElementById("find-btn").onclick = () => {
-    document.getElementById("results").innerText = "Detecting clothing...", t();
+    console.log("Find Clothes clicked - starting detection..."), document.getElementById("results").innerText = "Detecting clothing...", document.getElementById("products").innerHTML = "", d.clear(), w.clear(), k(), p = !1, t();
   }, document.getElementById("clear-btn").onclick = () => {
-    console.log("Clearing all cached products and detected items..."), S.clear(), d.clear(), p.clear(), D(), document.getElementById("products").innerHTML = "", document.getElementById("results").innerText = "", console.log("All caches cleared!");
+    console.log("Clearing all cached products and detected items..."), w.clear(), d.clear(), f.clear(), k(), document.getElementById("products").innerHTML = "", document.getElementById("results").innerText = "", console.log("All caches cleared!");
   }, document.getElementById("stop-btn").onclick = async () => {
-    g && (console.log("Stopping Overshoot vision..."), await g.stop(), g = null, document.getElementById("results").innerText = "Detection stopped.", console.log("Vision stopped."));
+    u && (console.log("Stopping Overshoot vision..."), p = !0, await u.stop(), u = null, document.getElementById("results").innerText = "Detection stopped.", console.log("Vision stopped."));
   }, document.getElementById("start-btn").onclick = async () => {
     const o = document.getElementById("camera-select").value, r = document.getElementById("preview");
     console.log("Starting camera with device:", o);
